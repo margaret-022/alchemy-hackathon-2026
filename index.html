@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transaction Pressure</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="window">
+        <div class="titlebar">
+          <div class="titlebar-left">
+            <span class="titlebar-icon">TP</span>
+            <span class="titlebar-title">Transaction Pressure</span>
+          </div>
+          <div class="titlebar-right">
+            <span class="badge" id="mode-badge">Synthetic Mode</span>
+          </div>
+        </div>
+
+        <div class="signals-panel">
+          <div class="signals-title">Signals</div>
+          <div class="signals-content" id="signals-content">
+            <span class="signal-label">Inspect a tile to reveal symptoms.</span>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="grid" id="grid"></div>
+          <div class="side-panel">
+            <div class="panel-section">
+              <div class="panel-title">Global Status</div>
+              <div class="status-label" id="status-label">Stable</div>
+            </div>
+
+            <div class="panel-section">
+              <div class="panel-title">Request Volume</div>
+              <div class="meter">
+                <div class="meter-fill" id="volume-meter"></div>
+              </div>
+            </div>
+
+            <div class="panel-section">
+              <div class="panel-title">Hotspot Concentration</div>
+              <div class="meter">
+                <div class="meter-fill" id="hotspot-meter"></div>
+              </div>
+            </div>
+
+            <div class="panel-section">
+              <div class="panel-title">Approvals</div>
+              <div class="status-label" id="approval-count">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-label">Action</div>
+          <div class="action-buttons">
+            <button class="action-button active" id="inspect-button">
+              Inspect
+            </button>
+            <button class="action-button" id="approve-button">Approve</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="incident-overlay hidden" id="incident-overlay">
+        <div class="incident-modal">
+          <div class="incident-title">Rate Limit Incident</div>
+          <div class="incident-cause" id="incident-cause">
+            Primary cause: —
+          </div>
+          <div class="incident-hint" id="incident-hint"></div>
+          <div class="incident-list" id="incident-list"></div>
+          <button class="restart-button" id="restart-button">New Run</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
