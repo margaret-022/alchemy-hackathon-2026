@@ -45,6 +45,7 @@ const STATE = {
   HIDDEN: "hidden",
   INSPECTED: "inspected",
   APPROVED: "approved",
+  HOLD: "held",
 };
 
 const STATUS_THRESHOLDS = [
@@ -61,7 +62,7 @@ const appState = {
   approvedTiles: [],
   meters: { volume: 0, hotspot: 0 },
   incident: null,
-  lastSignal: null,
+  lastClue: null,
   approvalCount: 0,
   lastAction: null,
   relatedIds: [],
@@ -73,6 +74,7 @@ const appState = {
   roundStartMs: 0,
   lastApprovalMs: 0,
   isPaused: false,
+  holdMode: false,
 };
 
 const elements = {
@@ -94,6 +96,8 @@ const elements = {
   incidentList: document.getElementById("incident-list"),
   restartButton: document.getElementById("restart-button"),
   quickRestart: document.getElementById("quick-restart"),
+  quickIncident: document.getElementById("quick-incident"),
+  holdToggle: document.getElementById("hold-toggle"),
   introOverlay: document.getElementById("intro-overlay"),
   introStartButton: document.getElementById("intro-start-button"),
   helpOverlay: document.getElementById("help-overlay"),
@@ -291,6 +295,87 @@ function computeLocalSeverity(tile, approvedTiles) {
   return 3;
 }
 
+function createClue(tile, action) {
+  const recent = appState.approvedTiles.slice(-4);
+  const methodMatches = recent.filter(
+    (t) => t.methodGroup === tile.methodGroup
+  ).length;
+  const clusterMatches = recent.filter(
+    (t) => t.contractGroup === tile.contractGroup
+  ).length;
+  const now = Date.now();
+  const isBurst =
+    action === "approve" &&
+    appState.lastApprovalMs > 0 &&
+    now - appState.lastApprovalMs < BURST_WINDOW_MS;
+  const hasSameness = methodMatches > 0 || clusterMatches > 0;
+  const methodLabel = METHOD_LABELS[tile.methodGroup] || "Request";
+
+  let axis = "Balanced";
+  const clues = ["Clue: no recent pattern to compare."];
+
+  if (hasSameness) {
+    axis = "Sameness";
+    const parts = [];
+    if (methodMatches > 0) {
+      parts.push(`${methodLabel} repeats (${methodMatches}/${recent.length})`);
+    }
+    if (clusterMatches > 0) {
+      parts.push(
+        `Cluster ${tile.contractGroup} repeats (${clusterMatches}/${recent.length})`
+      );
+    }
+    clues.length = 0;
+    clues.push(`Clue: ${parts.join(" and ")}.`);
+    
+  }
+
+  if (isBurst) {
+    axis = hasSameness ? "Mixed" : "Pacing";
+    if (hasSameness) {
+      clues.push("Clue: approvals are landing in a burst window.");
+    } else {
+      clues.length = 0;
+      clues.push("Clue: approvals are landing in a burst window.");
+    }
+    
+  }
+
+  if (action === "hold") {
+    clues.length = 0;
+    clues.push("Clue: tile held for later. No pressure added.");
+    
+  }
+
+  return { axis, clues };
+}
+
+function setHoldMode(isOn) {
+  appState.holdMode = isOn;
+  elements.holdToggle.classList.toggle("is-active", isOn);
+  elements.holdToggle.textContent = `Hold Mode: ${isOn ? "On" : "Off"}`;
+}
+
+function toggleHoldTile(tile) {
+  if (tile.state === STATE.APPROVED) return;
+  tile.state = tile.state === STATE.HOLD ? STATE.HIDDEN : STATE.HOLD;
+  appState.lastAction = "hold";
+  appState.lastClue = createClue(tile, "hold");
+  appState.focusTileId = null;
+  appState.relatedIds = [];
+  renderSignals();
+  renderTiles();
+}
+
+function handleTileClick(tile) {
+  if (appState.incident || appState.introVisible) return;
+  if (appState.holdMode) {
+    toggleHoldTile(tile);
+  } else {
+    approveTile(tile);
+  }
+}
+
 function getLogSnippet(severity) {
   return SIGNAL_LOGS[severity] || "ok";
 }
@@ -373,6 +458,7 @@ function getGlobalStatus() {
 function approveTile(tile) {
   if (tile.state === STATE.APPROVED || appState.incident || appState.introVisible)
     return;
+  const clue = createClue(tile, "approve");
   const severity = computeLocalSeverity(tile, appState.approvedTiles);
   const related = appState.approvedTiles.filter(
     (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
@@ -388,7 +474,7 @@ function approveTile(tile) {
   };
   tile.state = STATE.APPROVED;
   tile.revealedSignal = signal;
-  appState.lastSignal = signal;
+  appState.lastClue = clue;
   appState.approvedTiles.push(tile);
   appState.approvalCount += 1;
   appState.lastAction = "approve";
@@ -403,23 +489,18 @@ function approveTile(tile) {
 }
 
 function renderSignals() {
-  if (!appState.lastSignal) return;
+  if (!appState.lastClue) return;
   elements.signalsContent.innerHTML = "";
-  const badge = document.createElement("span");
-  badge.className = `signal-badge sev-${appState.lastSignal.severity}`;
-  badge.textContent = `Severity ${appState.lastSignal.severity}`;
+  const list = document.createElement("ul");
+  list.className = "clue-list";
 
-  const label = document.createElement("span");
-  label.className = "signal-label";
-  label.textContent = `${appState.lastSignal.symptom}: ${appState.lastSignal.logSnippet}`;
+  appState.lastClue.clues.forEach((clue) => {
+    const item = document.createElement("li");
+    item.textContent = clue;
+    list.appendChild(item);
+  });
 
-  elements.signalsContent.appendChild(badge);
-  elements.signalsContent.appendChild(label);
-
-  const related = document.createElement("span");
-  related.className = "signal-label";
-  related.textContent = `Related approvals: ${appState.lastSignal.relatedCount}`;
-  elements.signalsContent.appendChild(related);
+  elements.signalsContent.appendChild(list);
 }
 
 function renderMeters() {
@@ -540,7 +621,7 @@ function renderTiles() {
     }`;
     div.dataset.id = tile.id;
     div.addEventListener("click", () => {
-      approveTile(tile);
+      handleTileClick(tile);
     });
     fragment.appendChild(div);
   });
@@ -669,18 +750,19 @@ function resetGame(newSeed) {
   appState.approvedTiles = [];
   appState.approvalCount = 0;
   appState.incident = null;
-  appState.lastSignal = null;
+  appState.lastClue = null;
   appState.lastAction = null;
   appState.relatedIds = [];
   appState.focusTileId = null;
   appState.lastApprovalMs = 0;
+  setHoldMode(false);
   showIntro();
   const { tiles, rng } = generateTiles(appState.seed);
   appState.tiles = tiles;
   appState.rng = rng;
   elements.overlay.classList.add("hidden");
   elements.signalsContent.innerHTML =
-    '<span class="signal-label">Approve a tile to reveal symptoms.</span>';
+    '<span class="signal-label">Choose a tile to see a pace or sameness clue.</span>';
   renderStatus();
   renderMeters();
   stopTimer();
@@ -693,6 +775,17 @@ function resetGame(newSeed) {
 function bindEvents() {
   elements.restartButton.addEventListener("click", () => resetGame());
   elements.quickRestart.addEventListener("click", () => resetGame());
+  elements.quickIncident.addEventListener("click", () => {
+    hideIntro();
+    appState.incident = {
+      type: "hotspot",
+      contributors: pickContributors("hotspot"),
+    };
+    renderIncident();
+  });
+  elements.holdToggle.addEventListener("click", () => {
+    setHoldMode(!appState.holdMode);
+  });
   elements.introStartButton.addEventListener("click", () => {
     hideIntro();
     startTimer();

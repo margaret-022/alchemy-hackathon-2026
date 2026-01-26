@@ -16,6 +16,9 @@
           </div>
           <div class="titlebar-right">
             <button class="titlebar-button help-button" id="help-button">?</button>
+            <button class="titlebar-button" id="quick-incident">
+              Show Incident
+            </button>
             <button class="titlebar-button" id="quick-restart">
               New Run
             </button>
@@ -76,11 +79,19 @@
               </div>
             </div>
             <div class="panel-section signals-panel">
-              <div class="panel-title">Signals</div>
+              <div class="panel-title">Clues</div>
               <div class="signals-content" id="signals-content">
                 <span class="signal-label"
-                  >Approve a tile to reveal symptoms.</span
+                  >Choose a tile to see a pace or sameness clue.</span
                 >
+              </div>
+              <div class="signals-actions">
+                <button class="mode-button" id="hold-toggle">
+                  Hold Mode: Off
+                </button>
+                <div class="signals-helper">
+                  Hold lets you inspect a tile without adding pressure.
+                </div>
               </div>
             </div>
           </div>

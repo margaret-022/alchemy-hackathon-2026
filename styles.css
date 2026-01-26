@@ -4,8 +4,8 @@
 
 body {
   margin: 0;
-  padding: 24px;
-  background: #1b1b1b;
+  padding: 0;
+  background: transparent;
   font-family: "Tahoma", "Verdana", sans-serif;
   color: #111;
 }
@@ -13,7 +13,8 @@ body {
 .app {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .window {
@@ -21,7 +22,6 @@ body {
   height: 720px;
   background: #f1f1f1;
   border: 2px solid #2c2c2c;
-  box-shadow: 6px 6px 0 #000;
   display: flex;
   flex-direction: column;
 }
@@ -102,6 +102,47 @@ body {
   font-size: 14px;
 }
 
+.clue-list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #333;
+}
+
+.clue-list li {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.signals-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mode-button {
+  padding: 6px 10px;
+  border: 1px solid #2c2c2c;
+  background: #f4f4f4;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mode-button.is-active {
+  background: #2c2c2c;
+  color: #fff;
+}
+
+.signals-helper {
+  font-size: 11px;
+  color: #444;
+  line-height: 1.3;
+}
+
 .signal-badge {
   padding: 4px 8px;
   border: 1px solid #1a1a1a;
@@ -157,6 +198,12 @@ body {
 .tile.hidden {
   background: #f7f7f7;
   border-color: #b5b5b5;
+}
+
+.tile.held {
+  background: #e7eefc;
+  border-color: #5a7bc9;
+  box-shadow: 0 0 0 2px #b9c9f2 inset;
 }
 
 .tile.inspected {
@@ -333,10 +380,11 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
+  width: 100vw;
+  height: 100vh;
 }
 
 .incident-overlay.hidden {
@@ -351,16 +399,21 @@ body {
   box-shadow: 8px 8px 0 #000;
   justify-self: center;
   align-self: center;
+  transform: translateY(-2%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .intro-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
+  width: 100vw;
+  height: 100vh;
 }
 
 .intro-overlay.hidden {
@@ -375,16 +428,18 @@ body {
   box-shadow: 8px 8px 0 #000;
   justify-self: center;
   align-self: center;
+  transform: translateY(-3.5%);
 }
 
 .help-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
+  width: 100vw;
+  height: 100vh;
 }
 
 .help-overlay.hidden {
@@ -399,6 +454,7 @@ body {
   box-shadow: 8px 8px 0 #000;
   justify-self: center;
   align-self: center;
+  transform: translateY(-2%);
 }
 
 .intro-title {
@@ -436,49 +492,41 @@ body {
 }
 
 .incident-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .incident-cause {
   font-size: 14px;
-  margin-bottom: 8px;
+  font-weight: bold;
+  color: #1b1b1b;
 }
 
 .incident-hint {
-  font-size: 12px;
-  color: #333;
-  margin-bottom: 12px;
+  display: none;
 }
 
 .incident-summary {
-  font-size: 13px;
+  font-size: 12px;
   color: #222;
-  margin-bottom: 6px;
+  line-height: 1.45;
 }
 
 .incident-impact {
   font-size: 12px;
   color: #222;
-  margin-bottom: 8px;
   line-height: 1.4;
 }
 
 .incident-recommendation {
   font-size: 12px;
   color: #333;
-  margin-bottom: 12px;
   font-weight: bold;
 }
 
 .incident-list {
-  border: 1px solid #999;
-  background: #fff;
-  padding: 8px;
-  max-height: 220px;
-  overflow: auto;
-  margin-bottom: 12px;
+  display: none;
 }
 
 .incident-item {
