@@ -14,24 +14,26 @@
             <span class="titlebar-icon">TP</span>
             <span class="titlebar-title">Transaction Pressure</span>
           </div>
-          <div class="titlebar-right">
-            <span class="badge" id="mode-badge">Synthetic Mode</span>
-          </div>
-        </div>
-
-        <div class="signals-panel">
-          <div class="signals-title">Signals</div>
-          <div class="signals-content" id="signals-content">
-            <span class="signal-label">Inspect a tile to reveal symptoms.</span>
-          </div>
+          <div class="titlebar-right"></div>
         </div>
 
         <div class="content">
           <div class="grid" id="grid"></div>
           <div class="side-panel">
+            <div class="panel-section signals-panel">
+              <div class="panel-title">Signals</div>
+              <div class="signals-content" id="signals-content">
+                <span class="signal-label"
+                  >Inspect a tile to reveal symptoms.</span
+                >
+              </div>
+            </div>
             <div class="panel-section">
               <div class="panel-title">Global Status</div>
               <div class="status-label" id="status-label">Stable</div>
+              <div class="status-subtext" id="status-subtext">
+                No approvals yet.
+              </div>
             </div>
 
             <div class="panel-section">
@@ -56,7 +58,10 @@
         </div>
 
         <div class="action-bar">
-          <div class="action-label">Action</div>
+          <div class="action-label">Mode</div>
+          <div class="action-helper" id="action-helper">
+            Inspect reveals symptoms. Approve adds pressure.
+          </div>
           <div class="action-buttons">
             <button class="action-button active" id="inspect-button">
               Inspect

@@ -2,6 +2,8 @@ const GRID_SIZE = 12;
 const APPROVAL_TARGET = 25;
 const VOLUME_THRESHOLD = 120;
 const HOTSPOT_THRESHOLD = 45;
+const ALCHEMY_NETWORK = "eth-sepolia";
+const ALCHEMY_KEY_STORAGE = "alchemyKey";
 
 const METHOD_GROUPS = [
   "eth_call",
@@ -42,12 +44,15 @@ const appState = {
   incident: null,
   lastSignal: null,
   approvalCount: 0,
+  lastAction: null,
+  relatedIds: [],
 };
 
 const elements = {
   grid: document.getElementById("grid"),
   signalsContent: document.getElementById("signals-content"),
   statusLabel: document.getElementById("status-label"),
+  statusSubtext: document.getElementById("status-subtext"),
   volumeMeter: document.getElementById("volume-meter"),
   hotspotMeter: document.getElementById("hotspot-meter"),
   approvalCount: document.getElementById("approval-count"),
@@ -134,6 +139,107 @@ function generateTiles(seed) {
   return { tiles, rng };
 }
 
+function getAlchemyKey() {
+  return localStorage.getItem(ALCHEMY_KEY_STORAGE);
+}
+
+function getAlchemyUrl(apiKey) {
+  return `https://${ALCHEMY_NETWORK}.g.alchemy.com/v2/${apiKey}`;
+}
+
+async function fetchRealTransactions() {
+  const apiKey = getAlchemyKey();
+  if (!apiKey) return [];
+
+  const url = getAlchemyUrl(apiKey);
+  const headers = { "Content-Type": "application/json" };
+
+  try {
+    const blockNumberRes = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_blockNumber",
+        params: [],
+      }),
+    });
+    const blockNumberJson = await blockNumberRes.json();
+    const blockNumber = blockNumberJson.result;
+    if (!blockNumber) return [];
+
+    const blockRes = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "eth_getBlockByNumber",
+        params: [blockNumber, false],
+      }),
+    });
+    const blockJson = await blockRes.json();
+    const hashes = blockJson.result?.transactions || [];
+    const limited = hashes.slice(0, 10);
+
+    const txs = await Promise.all(
+      limited.map(async (hash, idx) => {
+        const txRes = await fetch(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 3 + idx,
+            method: "eth_getTransactionByHash",
+            params: [hash],
+          }),
+        });
+        const txJson = await txRes.json();
+        return txJson.result;
+      })
+    );
+
+    return txs.filter(Boolean);
+  } catch (error) {
+    return [];
+  }
+}
+
+function hashString(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function mapMethodIdToGroup(methodId, rng) {
+  if (!methodId) return rng.randomPick(METHOD_GROUPS);
+  if (methodId.startsWith("0xa9059cbb")) return "eth_call";
+  return "traceCall";
+}
+
+function mapAddressToGroup(address) {
+  if (!address) return "A";
+  return CONTRACT_GROUPS[hashString(address) % CONTRACT_GROUPS.length];
+}
+
+function mapRealTxsToTiles(realTxs, tiles, rng) {
+  if (!realTxs.length) return tiles;
+  tiles.forEach((tile) => {
+    const tx = rng.randomPick(realTxs);
+    tile.txHash = tx.hash;
+    tile.from = tx.from;
+    tile.to = tx.to;
+    tile.methodId = tx.input?.slice(0, 10);
+    tile.methodGroup = mapMethodIdToGroup(tile.methodId, rng);
+    tile.contractGroup = mapAddressToGroup(tile.to);
+  });
+  return tiles;
+}
+
 function computeLocalSeverity(tile, approvedTiles) {
   const related = approvedTiles.filter(
     (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
@@ -156,8 +262,10 @@ function updateMeters(tile) {
   const related = appState.approvedTiles.filter(
     (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
   );
-  appState.meters.hotspot += tile.hotspotWeight;
-  appState.meters.hotspot += related.length * 0.3;
+  if (related.length > 0) {
+    appState.meters.hotspot += tile.hotspotWeight;
+    appState.meters.hotspot += related.length * 0.3;
+  }
 }
 
 function checkForIncident() {
@@ -216,20 +324,28 @@ function setMode(mode) {
   appState.mode = mode;
   elements.inspectButton.classList.toggle("active", mode === "inspect");
   elements.approveButton.classList.toggle("active", mode === "approve");
+  renderStatus();
 }
 
 function inspectTile(tile) {
   if (tile.state === STATE.APPROVED || appState.incident) return;
   const severity = computeLocalSeverity(tile, appState.approvedTiles);
+  const related = appState.approvedTiles.filter(
+    (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
+  );
   const signal = {
     symptom: "Retries",
     severity,
     logSnippet: getLogSnippet(severity),
+    relatedCount: related.length,
   };
   tile.state = STATE.INSPECTED;
   tile.revealedSignal = signal;
   appState.lastSignal = signal;
+  appState.lastAction = "inspect";
+  appState.relatedIds = related.map((t) => t.id);
   renderSignals();
+  renderStatus();
   renderTiles();
 }
 
@@ -238,8 +354,11 @@ function approveTile(tile) {
   tile.state = STATE.APPROVED;
   appState.approvedTiles.push(tile);
   appState.approvalCount += 1;
+  appState.lastAction = "approve";
+  appState.relatedIds = [];
   updateMeters(tile);
   checkForIncident();
+  renderStatus();
   renderMeters();
   renderTiles();
 }
@@ -257,6 +376,11 @@ function renderSignals() {
 
   elements.signalsContent.appendChild(badge);
   elements.signalsContent.appendChild(label);
+
+  const related = document.createElement("span");
+  related.className = "signal-label";
+  related.textContent = `Related approvals: ${appState.lastSignal.relatedCount}`;
+  elements.signalsContent.appendChild(related);
 }
 
 function renderMeters() {
@@ -265,8 +389,19 @@ function renderMeters() {
   elements.volumeMeter.style.width = `${Math.round(volumeRatio * 100)}%`;
   elements.hotspotMeter.style.width = `${Math.round(hotspotRatio * 100)}%`;
   elements.hotspotMeter.classList.add("hotspot");
-  elements.statusLabel.textContent = getGlobalStatus();
+  renderStatus();
   elements.approvalCount.textContent = `${appState.approvalCount}/${APPROVAL_TARGET}`;
+}
+
+function renderStatus() {
+  elements.statusLabel.textContent = getGlobalStatus();
+  let subtext = "No approvals yet.";
+  if (appState.lastAction === "inspect") {
+    subtext = "Inspecting only (no pressure added).";
+  } else if (appState.lastAction === "approve") {
+    subtext = "Pressure increased by approval.";
+  }
+  elements.statusSubtext.textContent = subtext;
 }
 
 function renderTiles() {
@@ -274,6 +409,9 @@ function renderTiles() {
   appState.tiles.forEach((tile) => {
     const div = document.createElement("div");
     div.className = `tile ${tile.state}`;
+    if (appState.relatedIds.includes(tile.id)) {
+      div.classList.add("related");
+    }
     if (
       appState.incident &&
       appState.incident.contributors.some((t) => t.id === tile.id)
@@ -323,14 +461,18 @@ function resetGame(newSeed) {
   appState.approvalCount = 0;
   appState.incident = null;
   appState.lastSignal = null;
+  appState.lastAction = null;
+  appState.relatedIds = [];
   const { tiles, rng } = generateTiles(appState.seed);
   appState.tiles = tiles;
   appState.rng = rng;
   elements.overlay.classList.add("hidden");
   elements.signalsContent.innerHTML =
     '<span class="signal-label">Inspect a tile to reveal symptoms.</span>';
+  renderStatus();
   renderMeters();
   renderTiles();
+  applyRealTransactions();
 }
 
 function bindEvents() {
@@ -346,6 +488,15 @@ function init() {
   bindEvents();
   renderMeters();
   renderTiles();
+  applyRealTransactions();
+}
+
+function applyRealTransactions() {
+  fetchRealTransactions().then((realTxs) => {
+    if (!realTxs.length) return;
+    appState.tiles = mapRealTxsToTiles(realTxs, appState.tiles, appState.rng);
+    renderTiles();
+  });
 }
 
 init();
