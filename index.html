@@ -14,18 +14,22 @@
             <span class="titlebar-icon">TP</span>
             <span class="titlebar-title">Transaction Pressure</span>
           </div>
-          <div class="titlebar-right"></div>
+          <div class="titlebar-right">
+            <button class="titlebar-button help-button" id="help-button">?</button>
+            <button class="titlebar-button" id="quick-restart">
+              New Run
+            </button>
+          </div>
         </div>
 
         <div class="content">
           <div class="grid" id="grid"></div>
           <div class="side-panel">
             <div class="panel-section signals-panel">
-              <div class="panel-title">Signals</div>
-              <div class="signals-content" id="signals-content">
-                <span class="signal-label"
-                  >Inspect a tile to reveal symptoms.</span
-                >
+              <div class="panel-title">Time</div>
+              <div class="time-row">
+                <div class="status-label" id="timer-display">00:00</div>
+                <div class="status-subtext" id="timer-limit">Limit: 10:00</div>
               </div>
             </div>
             <div class="panel-section">
@@ -37,14 +41,28 @@
             </div>
 
             <div class="panel-section">
-              <div class="panel-title">Request Volume</div>
+              <div class="panel-title tooltip">
+                Request Volume
+                <span class="tooltip-text">
+                  Throughput pressure. Increases with every approval and rises
+                  faster when you approve quickly. Waiting lowers it. High
+                  volume alone can trigger an incident.
+                </span>
+              </div>
               <div class="meter">
                 <div class="meter-fill" id="volume-meter"></div>
               </div>
             </div>
 
             <div class="panel-section">
-              <div class="panel-title">Hotspot Concentration</div>
+              <div class="panel-title tooltip">
+                Hotspot Concentration
+                <span class="tooltip-text">
+                  Increases when you approve similar request patterns. Repeating
+                  the same type or cluster raises this bar and can trigger an
+                  incident.
+                </span>
+              </div>
               <div class="meter">
                 <div class="meter-fill" id="hotspot-meter"></div>
               </div>
@@ -53,33 +71,103 @@
             <div class="panel-section">
               <div class="panel-title">Approvals</div>
               <div class="status-label" id="approval-count">0</div>
+              <div class="status-subtext">
+                Goal: approve 25 without an incident.
+              </div>
+            </div>
+            <div class="panel-section signals-panel">
+              <div class="panel-title">Signals</div>
+              <div class="signals-content" id="signals-content">
+                <span class="signal-label"
+                  >Approve a tile to reveal symptoms.</span
+                >
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="action-bar">
-          <div class="action-label">Mode</div>
-          <div class="action-helper" id="action-helper">
-            Inspect reveals symptoms. Approve adds pressure.
-          </div>
-          <div class="action-buttons">
-            <button class="action-button active" id="inspect-button">
-              Inspect
-            </button>
-            <button class="action-button" id="approve-button">Approve</button>
-          </div>
-        </div>
       </div>
 
       <div class="incident-overlay hidden" id="incident-overlay">
         <div class="incident-modal">
           <div class="incident-title">Rate Limit Incident</div>
-          <div class="incident-cause" id="incident-cause">
-            Primary cause: —
-          </div>
+          <div class="incident-cause" id="incident-cause"></div>
+          <div class="incident-summary" id="incident-summary"></div>
           <div class="incident-hint" id="incident-hint"></div>
+          <div class="incident-impact" id="incident-impact"></div>
+          <div class="incident-recommendation" id="incident-recommendation"></div>
           <div class="incident-list" id="incident-list"></div>
           <button class="restart-button" id="restart-button">New Run</button>
+        </div>
+      </div>
+
+      <div class="intro-overlay hidden" id="intro-overlay">
+        <div class="intro-modal">
+          <div class="intro-title">Transaction Pressure</div>
+          <div class="intro-body">
+            <p>
+              You are approving normal transactions inside a windowed control
+              tool. Failures are visible; causes are hidden.
+            </p>
+            <p>
+              Every approval adds pressure. Patterns, not single tiles, create
+              incidents.
+            </p>
+            <p class="intro-note">
+              Approve tiles to proceed. Watch the grid light up with related
+              activity. When the system breaks, the postmortem reveals what
+              accumulated most.
+            </p>
+          </div>
+          <div class="intro-actions">
+            <button class="restart-button" id="intro-start-button">
+              Begin Run
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="help-overlay hidden" id="help-overlay">
+        <div class="help-modal">
+          <div class="intro-title">How to Read the Panel</div>
+          <div class="intro-body">
+            <h4>Time</h4>
+            <p>
+              This is the round clock. You are trying to reach the approval goal
+              before the limit expires.
+            </p>
+            <h4>Global Status</h4>
+            <p>
+              The system’s overall heat based on the higher of Volume or Hotspot.
+              It updates as your approvals add pressure.
+            </p>
+            <h4>Request Volume</h4>
+            <p>
+              Throughput pressure. Approving quickly or in bursts raises it,
+              even if the requests are diverse.
+            </p>
+            <h4>Hotspot Concentration</h4>
+            <p>
+              Repetition pressure. Approving similar request types or clusters
+              increases it and can trigger incidents through sameness.
+            </p>
+            <h4>Approvals</h4>
+            <p>
+              Your progress toward the goal. More approvals raise pressure, so
+              pacing and variety both matter.
+            </p>
+            <h4>Signals</h4>
+            <p>
+              What the system is “telling” you. Signals reveal severity and
+              related approvals after each choice.
+            </p>
+            <h4>The Grid</h4>
+            <p>
+              Each tile is a request with a hidden pattern. Approving reveals
+              how choices stack into incidents.
+            </p>
+          </div>
+          <button class="restart-button" id="help-close-button">Close</button>
         </div>
       </div>
     </div>

@@ -2,6 +2,10 @@ const GRID_SIZE = 12;
 const APPROVAL_TARGET = 25;
 const VOLUME_THRESHOLD = 120;
 const HOTSPOT_THRESHOLD = 45;
+const HOTSPOT_DECAY_RATE = 0.22;
+const VOLUME_DECAY_RATE = 0.25;
+const BURST_WINDOW_MS = 2000;
+const BURST_MAX_MULTIPLIER = 2.8;
 const ALCHEMY_NETWORK = "eth-sepolia";
 const ALCHEMY_KEY_STORAGE = "alchemyKey";
 
@@ -20,6 +24,22 @@ const SIGNAL_LOGS = [
   "429: Too Many Requests",
   "rate limit exceeded (burst)",
 ];
+
+const METHOD_LABELS = {
+  eth_call: "Read call",
+  getLogs: "Log lookup",
+  traceCall: "Trace analysis",
+  sendRawTransaction: "Transaction submit",
+  getBlock: "Block fetch",
+};
+
+const METHOD_SHORT = {
+  eth_call: "READ",
+  getLogs: "LOGS",
+  traceCall: "TRACE",
+  sendRawTransaction: "SEND",
+  getBlock: "BLOCK",
+};
 
 const STATE = {
   HIDDEN: "hidden",
@@ -40,12 +60,19 @@ const appState = {
   tiles: [],
   approvedTiles: [],
   meters: { volume: 0, hotspot: 0 },
-  mode: "inspect",
   incident: null,
   lastSignal: null,
   approvalCount: 0,
   lastAction: null,
   relatedIds: [],
+  focusTileId: null,
+  introVisible: true,
+  elapsedSeconds: 0,
+  timeLimitSeconds: 120,
+  timerIntervalId: null,
+  roundStartMs: 0,
+  lastApprovalMs: 0,
+  isPaused: false,
 };
 
 const elements = {
@@ -56,13 +83,22 @@ const elements = {
   volumeMeter: document.getElementById("volume-meter"),
   hotspotMeter: document.getElementById("hotspot-meter"),
   approvalCount: document.getElementById("approval-count"),
-  inspectButton: document.getElementById("inspect-button"),
-  approveButton: document.getElementById("approve-button"),
+  timerDisplay: document.getElementById("timer-display"),
+  timerLimit: document.getElementById("timer-limit"),
   overlay: document.getElementById("incident-overlay"),
   incidentCause: document.getElementById("incident-cause"),
+  incidentSummary: document.getElementById("incident-summary"),
   incidentHint: document.getElementById("incident-hint"),
+  incidentImpact: document.getElementById("incident-impact"),
+  incidentRecommendation: document.getElementById("incident-recommendation"),
   incidentList: document.getElementById("incident-list"),
   restartButton: document.getElementById("restart-button"),
+  quickRestart: document.getElementById("quick-restart"),
+  introOverlay: document.getElementById("intro-overlay"),
+  introStartButton: document.getElementById("intro-start-button"),
+  helpOverlay: document.getElementById("help-overlay"),
+  helpButton: document.getElementById("help-button"),
+  helpCloseButton: document.getElementById("help-close-button"),
 };
 
 function createSeededRng(seed) {
@@ -242,7 +278,9 @@ function mapRealTxsToTiles(realTxs, tiles, rng) {
 
 function computeLocalSeverity(tile, approvedTiles) {
   const related = approvedTiles.filter(
-    (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
+    (t) =>
+      t.id !== tile.id &&
+      (t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup)
   );
   const base = tile.hotspotWeight;
   const accumulated = related.length * 0.5;
@@ -258,9 +296,21 @@ function getLogSnippet(severity) {
 }
 
 function updateMeters(tile) {
-  appState.meters.volume += tile.volumeWeight;
+  const now = Date.now();
+  let burstMultiplier = 1;
+  if (appState.lastApprovalMs > 0) {
+    const delta = now - appState.lastApprovalMs;
+    if (delta < BURST_WINDOW_MS) {
+      const ratio = (BURST_WINDOW_MS - delta) / BURST_WINDOW_MS;
+      burstMultiplier = 1 + ratio * (BURST_MAX_MULTIPLIER - 1);
+    }
+  }
+  appState.meters.volume += tile.volumeWeight * burstMultiplier;
+  appState.lastApprovalMs = now;
   const related = appState.approvedTiles.filter(
-    (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
+    (t) =>
+      t.id !== tile.id &&
+      (t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup)
   );
   if (related.length > 0) {
     appState.meters.hotspot += tile.hotspotWeight;
@@ -320,17 +370,14 @@ function getGlobalStatus() {
   return threshold.label;
 }
 
-function setMode(mode) {
-  appState.mode = mode;
-  elements.inspectButton.classList.toggle("active", mode === "inspect");
-  elements.approveButton.classList.toggle("active", mode === "approve");
-  renderStatus();
-}
-
-function inspectTile(tile) {
-  if (tile.state === STATE.APPROVED || appState.incident) return;
+function approveTile(tile) {
+  if (tile.state === STATE.APPROVED || appState.incident || appState.introVisible)
+    return;
   const severity = computeLocalSeverity(tile, appState.approvedTiles);
   const related = appState.approvedTiles.filter(
+    (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
+  );
+  const relatedAll = appState.tiles.filter(
     (t) => t.methodGroup === tile.methodGroup || t.contractGroup === tile.contractGroup
   );
   const signal = {
@@ -339,27 +386,19 @@ function inspectTile(tile) {
     logSnippet: getLogSnippet(severity),
     relatedCount: related.length,
   };
-  tile.state = STATE.INSPECTED;
+  tile.state = STATE.APPROVED;
   tile.revealedSignal = signal;
   appState.lastSignal = signal;
-  appState.lastAction = "inspect";
-  appState.relatedIds = related.map((t) => t.id);
-  renderSignals();
-  renderStatus();
-  renderTiles();
-}
-
-function approveTile(tile) {
-  if (tile.state === STATE.APPROVED || appState.incident) return;
-  tile.state = STATE.APPROVED;
   appState.approvedTiles.push(tile);
   appState.approvalCount += 1;
   appState.lastAction = "approve";
-  appState.relatedIds = [];
+  appState.relatedIds = relatedAll.map((t) => t.id);
+  appState.focusTileId = tile.id;
   updateMeters(tile);
   checkForIncident();
   renderStatus();
   renderMeters();
+  renderSignals();
   renderTiles();
 }
 
@@ -393,6 +432,75 @@ function renderMeters() {
   elements.approvalCount.textContent = `${appState.approvalCount}/${APPROVAL_TARGET}`;
 }
 
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+function updateTimerDisplay() {
+  elements.timerDisplay.textContent = formatTime(appState.elapsedSeconds);
+  elements.timerLimit.textContent = `Limit: ${formatTime(appState.timeLimitSeconds)}`;
+}
+
+function startTimerInterval() {
+  appState.timerIntervalId = setInterval(() => {
+    appState.elapsedSeconds = Math.floor((Date.now() - appState.roundStartMs) / 1000);
+    if (!appState.incident) {
+      applyDecayTick();
+    }
+    updateTimerDisplay();
+    if (appState.elapsedSeconds >= appState.timeLimitSeconds) {
+      triggerTimeout();
+    }
+  }, 1000);
+}
+
+function startTimer() {
+  stopTimer();
+  appState.roundStartMs = Date.now();
+  appState.elapsedSeconds = 0;
+  appState.isPaused = false;
+  updateTimerDisplay();
+  startTimerInterval();
+}
+
+function stopTimer() {
+  if (appState.timerIntervalId) {
+    clearInterval(appState.timerIntervalId);
+    appState.timerIntervalId = null;
+  }
+}
+
+function pauseTimer() {
+  if (!appState.timerIntervalId) return;
+  appState.elapsedSeconds = Math.floor((Date.now() - appState.roundStartMs) / 1000);
+  stopTimer();
+  appState.isPaused = true;
+  updateTimerDisplay();
+}
+
+function resumeTimer() {
+  if (appState.timerIntervalId || !appState.isPaused) return;
+  if (appState.incident || appState.introVisible) return;
+  appState.roundStartMs = Date.now() - appState.elapsedSeconds * 1000;
+  appState.isPaused = false;
+  startTimerInterval();
+}
+
+function applyDecayTick() {
+  let changed = false;
+  if (appState.meters.hotspot > 0) {
+    appState.meters.hotspot = Math.max(0, appState.meters.hotspot - HOTSPOT_DECAY_RATE);
+    changed = true;
+  }
+  if (appState.meters.volume > 0) {
+    appState.meters.volume = Math.max(0, appState.meters.volume - VOLUME_DECAY_RATE);
+    changed = true;
+  }
+  if (changed) renderMeters();
+}
+
 function renderStatus() {
   elements.statusLabel.textContent = getGlobalStatus();
   let subtext = "No approvals yet.";
@@ -406,11 +514,18 @@ function renderStatus() {
 
 function renderTiles() {
   const fragment = document.createDocumentFragment();
+  const focusTile = appState.tiles.find((tile) => tile.id === appState.focusTileId);
   appState.tiles.forEach((tile) => {
     const div = document.createElement("div");
     div.className = `tile ${tile.state}`;
-    if (appState.relatedIds.includes(tile.id)) {
-      div.classList.add("related");
+    if (focusTile && appState.relatedIds.includes(tile.id)) {
+      const severity = computeLocalSeverity(tile, appState.approvedTiles);
+      div.classList.add(`risk-${severity}`);
+      if (tile.state === STATE.APPROVED) {
+        div.classList.add("risk-outline");
+      }
+    } else if (focusTile) {
+      div.classList.add("dim");
     }
     if (
       appState.incident &&
@@ -418,13 +533,14 @@ function renderTiles() {
     ) {
       div.classList.add("contributor");
     }
+    const methodShort = METHOD_SHORT[tile.methodGroup] || "REQ";
+    div.innerHTML = `<span class="tile-label">${methodShort} • ${tile.contractGroup}</span>`;
+    div.title = `${METHOD_LABELS[tile.methodGroup] || "Request"} • Cluster ${
+      tile.contractGroup
+    }`;
     div.dataset.id = tile.id;
     div.addEventListener("click", () => {
-      if (appState.mode === "inspect") {
-        inspectTile(tile);
-      } else {
-        approveTile(tile);
-      }
+      approveTile(tile);
     });
     fragment.appendChild(div);
   });
@@ -434,24 +550,117 @@ function renderTiles() {
 
 function renderIncident() {
   if (!appState.incident) return;
+  stopTimer();
   elements.overlay.classList.remove("hidden");
-  const causeLabel =
-    appState.incident.type === "volume"
-      ? "Primary cause: Request Volume"
-      : "Primary cause: Hotspot Concentration";
+  let causeLabel = "Rate limits kicked in.";
+  if (appState.incident.type === "volume") {
+    causeLabel = "You pushed too many requests at once.";
+  } else if (appState.incident.type === "hotspot") {
+    causeLabel = "You concentrated too many similar requests.";
+  } else if (appState.incident.type === "timeout") {
+    causeLabel = "Time limit reached.";
+  }
+  const patternSummary = summarizePattern(appState.incident.contributors);
   elements.incidentCause.textContent = causeLabel;
-  elements.incidentHint.textContent =
-    "Normal approvals accumulated into a rate-limit incident.";
+  if (appState.incident.type === "timeout") {
+    elements.incidentSummary.textContent = `Round ended at ${formatTime(
+      appState.timeLimitSeconds
+    )}.`;
+    elements.incidentHint.textContent =
+      "Pressure was still rising when the clock ran out.";
+    elements.incidentImpact.textContent =
+      "Impact: the team had to pause approvals to avoid a runaway incident.";
+    elements.incidentRecommendation.textContent =
+      "Next run: reduce streaks so you can reach the goal before the clock.";
+  } else {
+    elements.incidentSummary.textContent =
+      "Rate limits kicked in. Requests started failing and retries piled on.";
+    elements.incidentHint.textContent = patternSummary.summary;
+    elements.incidentImpact.textContent =
+      "Impact: user actions stalled, error rates spiked, and on-call had to throttle or shed load to recover.";
+    elements.incidentRecommendation.textContent =
+      appState.incident.type === "hotspot"
+        ? "Next run: break up similar approvals to avoid a hotspot cascade."
+        : "Next run: slow your approvals to avoid a burst cascade.";
+  }
 
   elements.incidentList.innerHTML = "";
   appState.incident.contributors.forEach((tile, index) => {
     const row = document.createElement("div");
     row.className = "incident-item";
     const count = countRelated(tile);
-    row.innerHTML = `<span>#${index + 1} Tile ${tile.row + 1},${tile.col + 1}</span>
-      <span>Approvals linked: ${count}</span>`;
+    const methodLabel = METHOD_LABELS[tile.methodGroup] || "Request";
+    row.innerHTML = `<span>#${index + 1} ${methodLabel} • Cluster ${tile.contractGroup}</span>
+      <span>Related approvals: ${count}</span>`;
     elements.incidentList.appendChild(row);
   });
+}
+
+function triggerTimeout() {
+  if (appState.incident) return;
+  const likelyType =
+    appState.meters.hotspot >= appState.meters.volume ? "hotspot" : "volume";
+  appState.incident = {
+    type: "timeout",
+    contributors: pickContributors(likelyType),
+  };
+  renderIncident();
+}
+
+function summarizePattern(contributors) {
+  const byMethod = new Map();
+  const byContract = new Map();
+  contributors.forEach((tile) => {
+    byMethod.set(tile.methodGroup, (byMethod.get(tile.methodGroup) || 0) + 1);
+    byContract.set(tile.contractGroup, (byContract.get(tile.contractGroup) || 0) + 1);
+  });
+  const topMethod = getTopKeyWithCount(byMethod);
+  const topContract = getTopKeyWithCount(byContract);
+  const total = contributors.length;
+  const summaryParts = [];
+  if (topMethod.key) {
+    const methodLabel = METHOD_LABELS[topMethod.key] || topMethod.key;
+    summaryParts.push(
+      `${methodLabel} appears in ${topMethod.count}/${total} contributors`
+    );
+  }
+  if (topContract.key) {
+    summaryParts.push(
+      `cluster ${topContract.key} appears in ${topContract.count}/${total} contributors`
+    );
+  }
+  const summary =
+    summaryParts.length > 0
+      ? `Pattern detected: ${summaryParts.join(" and ")}.`
+      : "Pattern detected: no dominant request type or cluster.";
+  const recommendation =
+    appState.incident?.type === "hotspot"
+      ? "Try diversifying request types or clusters on the next run."
+      : "Try spacing approvals so the request burst is smaller.";
+  return { summary, recommendation };
+}
+
+function getTopKeyWithCount(counter) {
+  let bestKey = null;
+  let bestCount = -1;
+  counter.forEach((count, key) => {
+    if (count > bestCount) {
+      bestKey = key;
+      bestCount = count;
+    }
+  });
+  return { key: bestKey, count: bestCount };
+}
+
+
+function showIntro() {
+  appState.introVisible = true;
+  elements.introOverlay.classList.remove("hidden");
+}
+
+function hideIntro() {
+  appState.introVisible = false;
+  elements.introOverlay.classList.add("hidden");
 }
 
 function resetGame(newSeed) {
@@ -463,22 +672,39 @@ function resetGame(newSeed) {
   appState.lastSignal = null;
   appState.lastAction = null;
   appState.relatedIds = [];
+  appState.focusTileId = null;
+  appState.lastApprovalMs = 0;
+  showIntro();
   const { tiles, rng } = generateTiles(appState.seed);
   appState.tiles = tiles;
   appState.rng = rng;
   elements.overlay.classList.add("hidden");
   elements.signalsContent.innerHTML =
-    '<span class="signal-label">Inspect a tile to reveal symptoms.</span>';
+    '<span class="signal-label">Approve a tile to reveal symptoms.</span>';
   renderStatus();
   renderMeters();
+  stopTimer();
+  appState.elapsedSeconds = 0;
+  updateTimerDisplay();
   renderTiles();
   applyRealTransactions();
 }
 
 function bindEvents() {
-  elements.inspectButton.addEventListener("click", () => setMode("inspect"));
-  elements.approveButton.addEventListener("click", () => setMode("approve"));
   elements.restartButton.addEventListener("click", () => resetGame());
+  elements.quickRestart.addEventListener("click", () => resetGame());
+  elements.introStartButton.addEventListener("click", () => {
+    hideIntro();
+    startTimer();
+  });
+  elements.helpButton.addEventListener("click", () => {
+    pauseTimer();
+    elements.helpOverlay.classList.remove("hidden");
+  });
+  elements.helpCloseButton.addEventListener("click", () => {
+    elements.helpOverlay.classList.add("hidden");
+    resumeTimer();
+  });
 }
 
 function init() {
@@ -487,7 +713,9 @@ function init() {
   appState.rng = rng;
   bindEvents();
   renderMeters();
+  updateTimerDisplay();
   renderTiles();
+  showIntro();
   applyRealTransactions();
 }
 
