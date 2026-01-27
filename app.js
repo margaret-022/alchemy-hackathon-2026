@@ -854,10 +854,13 @@ function formatLeaderboardEntry(entry, index) {
   const pressure = Math.round((entry.max_pressure_ratio || 0) * 100);
   const approvals = entry.approvals || 0;
   return `
-    <li class="leaderboard-item">
-      <span>#${index + 1} ${name}</span>
-      <span>${time} • ${approvals}/${APPROVAL_TARGET} • ${pressure}%</span>
-    </li>
+    <div class="leaderboard-row" role="row">
+      <span role="cell">#${index + 1}</span>
+      <span role="cell">${name}</span>
+      <span role="cell">${time}</span>
+      <span role="cell">${approvals}/${APPROVAL_TARGET}</span>
+      <span role="cell">${pressure}%</span>
+    </div>
   `;
 }
 

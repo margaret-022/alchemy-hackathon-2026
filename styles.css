@@ -462,20 +462,37 @@ body {
   gap: 12px;
 }
 
-.leaderboard-list {
-  margin: 0;
-  padding-left: 18px;
+.leaderboard-table {
   display: grid;
   gap: 6px;
   font-size: 11px;
   color: #1b1b1b;
 }
 
-.leaderboard-item {
-  display: flex;
-  justify-content: space-between;
+.leaderboard-body {
+  display: grid;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 44px 1.2fr 72px 80px 90px;
   gap: 8px;
-  font-size: 11px;
+  align-items: center;
+}
+
+.leaderboard-row.header {
+  font-weight: bold;
+  color: #1b2c4f;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.leaderboard-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leaderboard-entry {
@@ -1044,7 +1061,7 @@ body {
 }
 
 .debug-only {
-  display: none;
+  display: inline-flex;
 }
 .modal-actions.center {
   display: flex;
