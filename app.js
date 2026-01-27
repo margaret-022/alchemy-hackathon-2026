@@ -146,9 +146,13 @@ const elements = {
   tutorialNextButton: document.getElementById("tutorial-next-button"),
   tutorialCloseButton: document.getElementById("tutorial-close-button"),
   blockDescriptionsToggle: document.getElementById("block-descriptions-toggle"),
+  musicToggle: document.getElementById("music-toggle"),
 };
 
 let tooltipEl = null;
+let musicPlayer = null;
+let musicStarted = false;
+let musicEnabled = true;
 
 function getTooltipEl() {
   if (tooltipEl) return tooltipEl;
@@ -156,6 +160,74 @@ function getTooltipEl() {
   tooltipEl.className = "tile-tooltip hidden";
   document.body.appendChild(tooltipEl);
   return tooltipEl;
+}
+
+function initBackgroundMusic() {
+  if (musicPlayer) return;
+  musicPlayer = document.getElementById("background-music");
+  updateMusicToggle();
+}
+
+function requestMusicPlayback() {
+  if (!musicPlayer || !musicEnabled) return;
+  try {
+    musicPlayer.volume = 0.4;
+    musicPlayer.muted = false;
+    if (!musicStarted || musicPlayer.paused) {
+      const playPromise = musicPlayer.play();
+      if (playPromise?.catch) {
+        playPromise.catch(() => {
+          // Autoplay can be blocked until a user gesture.
+        });
+      }
+      musicStarted = true;
+    }
+  } catch (error) {
+    // Autoplay can be blocked until a user gesture.
+  }
+}
+
+function updateMusicToggle() {
+  if (!elements.musicToggle) return;
+  elements.musicToggle.textContent = `Music: ${musicEnabled ? "On" : "Off"}`;
+  elements.musicToggle.classList.toggle("is-active", musicEnabled);
+}
+
+function toggleMusic() {
+  musicEnabled = !musicEnabled;
+  updateMusicToggle();
+  if (!musicPlayer) return;
+  if (musicEnabled) {
+    requestMusicPlayback();
+  } else {
+    try {
+      musicPlayer.muted = true;
+      if (musicPlayer.paused) {
+        const playPromise = musicPlayer.play();
+        if (playPromise?.catch) {
+          playPromise.catch(() => {
+            // Autoplay can be blocked until a user gesture.
+          });
+        }
+      }
+    } catch (error) {
+      // Ignore player state errors.
+    }
+  }
+}
+
+function stopMusic() {
+  if (!musicPlayer) return;
+  musicEnabled = false;
+  updateMusicToggle();
+  try {
+    musicPlayer.pause();
+    musicPlayer.currentTime = 0;
+    musicPlayer.muted = true;
+    musicStarted = false;
+  } catch (error) {
+    // Ignore player state errors.
+  }
 }
 
 const TUTORIAL_STEPS = [
@@ -588,6 +660,7 @@ function toggleHoldTile(tile) {
 
 function handleTileClick(tile) {
   if (appState.incident || appState.introVisible) return;
+  requestMusicPlayback();
   if (appState.holdMode) {
     toggleHoldTile(tile);
   } else {
@@ -640,6 +713,7 @@ function checkForVictory() {
 
 function triggerVictory() {
   stopTimer();
+  stopMusic();
   elements.victoryOverlay.classList.remove("hidden");
 }
 
@@ -674,6 +748,7 @@ function triggerIncident(type) {
     type,
     contributors,
   };
+  stopMusic();
   renderIncident();
 }
 
@@ -937,6 +1012,7 @@ function triggerTimeout() {
     type: "timeout",
     contributors: pickContributors(likelyType),
   };
+  stopMusic();
   renderIncident();
 }
 
@@ -1086,19 +1162,28 @@ function bindEvents() {
     triggerVictory();
   });
   elements.holdToggle.addEventListener("click", () => {
+    requestMusicPlayback();
     setHoldMode(!appState.holdMode);
   });
   elements.blockDescriptionsToggle.addEventListener("change", (event) => {
+    requestMusicPlayback();
     setBlockDescriptions(event.target.checked);
   });
   elements.introStartButton.addEventListener("click", () => {
+    requestMusicPlayback();
     hideIntro();
     startTimer();
   });
   elements.helpButton.addEventListener("click", () => {
+    requestMusicPlayback();
     pauseTimer();
     elements.helpOverlay.classList.remove("hidden");
   });
+  if (elements.musicToggle) {
+    elements.musicToggle.addEventListener("click", () => {
+      toggleMusic();
+    });
+  }
   elements.helpCloseButton.addEventListener("click", () => {
     elements.helpOverlay.classList.add("hidden");
     resumeTimer();
@@ -1110,6 +1195,7 @@ function bindEvents() {
     });
   });
   elements.howToWinButton.addEventListener("click", () => {
+    requestMusicPlayback();
     showHowToWin();
   });
   elements.howToWinCloseButton.addEventListener("click", () => {
@@ -1119,6 +1205,7 @@ function bindEvents() {
     handleOverlayClick(event, hideHowToWin);
   });
   elements.tutorialButton.addEventListener("click", () => {
+    requestMusicPlayback();
     showTutorial();
   });
   elements.tutorialCloseButton.addEventListener("click", () => {
@@ -1154,6 +1241,8 @@ function init() {
   const { tiles, rng } = generateTiles(appState.seed);
   appState.tiles = tiles;
   appState.rng = rng;
+  updateMusicToggle();
+  initBackgroundMusic();
   bindEvents();
   renderMeters();
   updateTimerDisplay();

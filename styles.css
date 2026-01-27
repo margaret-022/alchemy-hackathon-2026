@@ -38,6 +38,10 @@ body {
   font-size: 11px;
 }
 
+#background-music {
+  display: none;
+}
+
 .easter-egg {
   position: fixed;
   bottom: var(--egg-bottom);
@@ -75,6 +79,8 @@ body {
   flex-direction: column;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
   overflow: hidden;
 }
 
@@ -136,6 +142,11 @@ body {
 
 .titlebar-button:active {
   background: linear-gradient(180deg, #a9c5f1 0%, #d6e6ff 100%);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
+}
+
+.titlebar-button.is-active {
+  background: linear-gradient(180deg, #d6e6ff 0%, #b7cdf6 100%);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
 }
 
@@ -263,6 +274,43 @@ body {
   gap: 12px;
   padding: 12px;
   background: linear-gradient(180deg, #f7faff 0%, #eaf1ff 100%);
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, #f7faff 0%, #dfe9ff 100%);
+  border-top: 2px inset #b1c2de;
+  box-shadow: 0 1px 0 #ffffff inset;
+}
+
+.action-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.action-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.action-tooltip .tooltip-text {
+  top: auto;
+  bottom: 32px;
+  left: auto;
+  right: 0;
+  width: 220px;
+}
+
+.action-tooltip:hover .tooltip-text {
+  opacity: 1;
 }
 
 .grid {

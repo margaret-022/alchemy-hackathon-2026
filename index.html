@@ -22,6 +22,7 @@
           </div>
           <div class="titlebar-right">
             <button class="titlebar-button help-button" id="help-button">?</button>
+            <button class="titlebar-button" id="music-toggle">Music: On</button>
             <button class="titlebar-button" id="how-to-win-button">
               How to Win
             </button>
@@ -94,33 +95,25 @@
               </div>
             </div>
 
-            <div class="panel-section signals-panel">
-              <div class="panel-title">Hold Mode</div>
-              <div class="signals-actions">
-                <button class="mode-button" id="hold-toggle">
-                  Hold Mode: Off
-                </button>
-                <div class="signals-helper">
-                  Hold lets you inspect a tile without adding pressure.
-                </div>
-              </div>
-            </div>
+          </div>
+        </div>
 
-            <div class="panel-section signals-panel">
-              <div class="panel-title">Block Descriptions</div>
-              <div class="signals-actions">
-                <label class="toggle-row">
-                  <input
-                    type="checkbox"
-                    id="block-descriptions-toggle"
-                    class="toggle-input"
-                  />
-                  <span class="toggle-label">Show block descriptions</span>
-                </label>
-                <div class="signals-helper">
-                  Show hover details about each tile's method and selector.
-                </div>
-              </div>
+        <div class="action-bar">
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              id="block-descriptions-toggle"
+              class="toggle-input"
+              aria-label="Show block descriptions"
+            />
+            <span class="toggle-label">Show tile method + selector.</span>
+          </label>
+          <div class="action-right">
+            <div class="action-tooltip">
+              <button class="mode-button" id="hold-toggle">Hold Mode: Off</button>
+              <span class="tooltip-text">
+                Hold lets you inspect a tile without adding pressure.
+              </span>
             </div>
           </div>
         </div>
@@ -315,6 +308,13 @@
         </div>
       </div>
     </div>
+
+    <audio
+      id="background-music"
+      src="Mob Battle – Silent Partner (No Copyright Music).mp3"
+      preload="auto"
+      loop
+    ></audio>
 
     <script src="app.js"></script>
   </body>
