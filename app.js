@@ -41,6 +41,25 @@ const METHOD_SHORT = {
   getBlock: "BLOCK",
 };
 
+const METHOD_DISPLAY = {
+  "0xa9059cbb": { short: "XFER", label: "Transfer" },
+  "0x23b872dd": { short: "XFRM", label: "TransferFrom" },
+  "0x095ea7b3": { short: "APPR", label: "Approve" },
+  "0x70a08231": { short: "BAL", label: "BalanceOf" },
+  "0xdd62ed3e": { short: "ALLOW", label: "Allowance" },
+  "0x18160ddd": { short: "SUP", label: "TotalSupply" },
+  "0x313ce567": { short: "DEC", label: "Decimals" },
+  "0x40c10f19": { short: "MINT", label: "Mint" },
+  "0x9dc29fac": { short: "BURN", label: "Burn" },
+  "0x2e1a7d4d": { short: "WDRW", label: "Withdraw" },
+  "0xd0e30db0": { short: "DEPO", label: "Deposit" },
+  "0x8c5be1e5": { short: "APPV", label: "Approval" },
+  "0x7ff36ab5": { short: "SWAP", label: "SwapExactETHForTokens" },
+  "0x38ed1739": { short: "SWAP", label: "SwapExactTokensForTokens" },
+  "0x18cbafe5": { short: "SWAP", label: "SwapExactTokensForETH" },
+  "0xfb3bdb41": { short: "SWAP", label: "SwapETHForExactTokens" },
+};
+
 const STATE = {
   HIDDEN: "hidden",
   INSPECTED: "inspected",
@@ -75,6 +94,7 @@ const appState = {
   lastApprovalMs: 0,
   isPaused: false,
   holdMode: false,
+  showBlockDescriptions: false,
   tutorialStepIndex: 0,
 };
 
@@ -118,7 +138,18 @@ const elements = {
   tutorialPrevButton: document.getElementById("tutorial-prev-button"),
   tutorialNextButton: document.getElementById("tutorial-next-button"),
   tutorialCloseButton: document.getElementById("tutorial-close-button"),
+  blockDescriptionsToggle: document.getElementById("block-descriptions-toggle"),
 };
+
+let tooltipEl = null;
+
+function getTooltipEl() {
+  if (tooltipEl) return tooltipEl;
+  tooltipEl = document.createElement("div");
+  tooltipEl.className = "tile-tooltip hidden";
+  document.body.appendChild(tooltipEl);
+  return tooltipEl;
+}
 
 const TUTORIAL_STEPS = [
   {
@@ -265,10 +296,15 @@ function generateTiles(seed) {
   const tiles = [];
   for (let row = 0; row < GRID_SIZE; row += 1) {
     for (let col = 0; col < GRID_SIZE; col += 1) {
+      const pseudoSelector = `0x${hashString(`${seed}-${row}-${col}`)
+        .toString(16)
+        .padStart(8, "0")}`;
+      const pseudoDisplay = getMethodDisplay(pseudoSelector);
       tiles.push({
         id: `${row}-${col}-${seed}`,
         row,
         col,
+        methodId: pseudoSelector,
         methodGroup: rng.weightedRandom({
           eth_call: 0.25,
           getLogs: 0.2,
@@ -281,6 +317,8 @@ function generateTiles(seed) {
         hotspotWeight: rng.randomInt(0, 3),
         state: STATE.HIDDEN,
         revealedSignal: null,
+        methodDisplayShort: pseudoDisplay?.short || null,
+        methodDisplayLabel: pseudoDisplay?.label || null,
       });
     }
   }
@@ -297,7 +335,7 @@ function getAlchemyUrl(apiKey) {
 
 async function fetchRealTransactions() {
   const apiKey = getAlchemyKey();
-  if (!apiKey) return [];
+  if (!apiKey) return null;
 
   const url = getAlchemyUrl(apiKey);
   const headers = { "Content-Type": "application/json" };
@@ -315,7 +353,7 @@ async function fetchRealTransactions() {
     });
     const blockNumberJson = await blockNumberRes.json();
     const blockNumber = blockNumberJson.result;
-    if (!blockNumber) return [];
+    if (!blockNumber) return null;
 
     const blockRes = await fetch(url, {
       method: "POST",
@@ -348,9 +386,12 @@ async function fetchRealTransactions() {
       })
     );
 
-    return txs.filter(Boolean);
+    return {
+      blockNumber,
+      txs: txs.filter(Boolean),
+    };
   } catch (error) {
-    return [];
+    return null;
   }
 }
 
@@ -363,15 +404,75 @@ function hashString(input) {
   return Math.abs(hash);
 }
 
+function getMethodDisplay(methodId) {
+  if (!methodId) return null;
+  const selector = methodId.slice(0, 10).toLowerCase();
+  if (selector === "0x" || selector.length < 10) {
+    return { short: "ETH", label: "ETH transfer" };
+  }
+  if (METHOD_DISPLAY[selector]) return METHOD_DISPLAY[selector];
+  const shortHex = selector.replace("0x", "").slice(0, 4).toUpperCase();
+  return { short: shortHex, label: `Selector ${selector}` };
+}
+
 function mapMethodIdToGroup(methodId, rng) {
-  if (!methodId) return rng.randomPick(METHOD_GROUPS);
-  if (methodId.startsWith("0xa9059cbb")) return "eth_call";
-  return "traceCall";
+  if (!methodId || methodId === "0x") return "sendRawTransaction";
+  const selector = methodId.slice(0, 10);
+  if (selector === "0xa9059cbb") return "sendRawTransaction";
+  return METHOD_GROUPS[hashString(selector) % METHOD_GROUPS.length];
 }
 
 function mapAddressToGroup(address) {
   if (!address) return "A";
   return CONTRACT_GROUPS[hashString(address) % CONTRACT_GROUPS.length];
+}
+
+function getTileTooltipContent(tile) {
+  const methodLabel = METHOD_LABELS[tile.methodGroup] || "Request";
+  const methodShort = METHOD_SHORT[tile.methodGroup] || "REQ";
+  let selectorText = "0x";
+  if (tile.methodId && tile.methodId !== "0x") {
+    const raw = tile.methodId.toLowerCase();
+    const hex = raw.startsWith("0x") ? raw.slice(2) : raw;
+    if (hex.length <= 8) {
+      selectorText = `0x${hex}`;
+    } else {
+      selectorText = `0x${hex.slice(0, 4)}...${hex.slice(-4)}`;
+    }
+  }
+  return `
+    <div class="tile-tooltip-title">${methodLabel}</div>
+    <div class="tile-tooltip-row"><span>Method</span><span>${methodShort}</span></div>
+    <div class="tile-tooltip-row"><span>Cluster</span><span>${tile.contractGroup}</span></div>
+    <div class="tile-tooltip-row"><span>Selector</span><span>${selectorText}</span></div>
+  `;
+}
+
+function showTileTooltip(tile, targetEl) {
+  if (!appState.showBlockDescriptions) return;
+  const tooltip = getTooltipEl();
+  tooltip.innerHTML = getTileTooltipContent(tile);
+  tooltip.classList.remove("hidden");
+  const rect = targetEl.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const top = window.scrollY + rect.top - tooltipRect.height - 8;
+  const left =
+    window.scrollX + rect.left + rect.width / 2 - tooltipRect.width / 2;
+  tooltip.style.top = `${Math.max(8, top)}px`;
+  tooltip.style.left = `${Math.max(8, left)}px`;
+}
+
+function hideTileTooltip() {
+  if (!tooltipEl) return;
+  tooltipEl.classList.add("hidden");
+}
+
+function setBlockDescriptions(enabled) {
+  appState.showBlockDescriptions = enabled;
+  if (elements.blockDescriptionsToggle) {
+    elements.blockDescriptionsToggle.checked = enabled;
+  }
+  if (!enabled) hideTileTooltip();
 }
 
 function mapRealTxsToTiles(realTxs, tiles, rng) {
@@ -382,6 +483,9 @@ function mapRealTxsToTiles(realTxs, tiles, rng) {
     tile.from = tx.from;
     tile.to = tx.to;
     tile.methodId = tx.input?.slice(0, 10);
+    const methodDisplay = getMethodDisplay(tile.methodId);
+    tile.methodDisplayShort = methodDisplay?.short || null;
+    tile.methodDisplayLabel = methodDisplay?.label || null;
     tile.methodGroup = mapMethodIdToGroup(tile.methodId, rng);
     tile.contractGroup = mapAddressToGroup(tile.to);
   });
@@ -739,15 +843,16 @@ function renderTiles() {
     ) {
       div.classList.add("contributor");
     }
-    const methodShort = METHOD_SHORT[tile.methodGroup] || "REQ";
-    div.innerHTML = `<span class="tile-label">${methodShort} • ${tile.contractGroup}</span>`;
-    div.title = `${METHOD_LABELS[tile.methodGroup] || "Request"} • Cluster ${
-      tile.contractGroup
-    }`;
+    const methodGroupShort = METHOD_SHORT[tile.methodGroup] || "REQ";
+    div.innerHTML = `<span class="tile-label">${methodGroupShort} • ${tile.contractGroup}</span>`;
     div.dataset.id = tile.id;
     div.addEventListener("click", () => {
       handleTileClick(tile);
     });
+    div.addEventListener("mouseenter", () => {
+      showTileTooltip(tile, div);
+    });
+    div.addEventListener("mouseleave", hideTileTooltip);
     fragment.appendChild(div);
   });
   elements.grid.innerHTML = "";
@@ -911,6 +1016,7 @@ function hideTutorial() {
 }
 
 function resetGame(newSeed) {
+  hideTileTooltip();
   appState.seed = newSeed || `${Date.now()}`;
   appState.meters = { volume: 0, hotspot: 0 };
   appState.approvedTiles = [];
@@ -958,6 +1064,9 @@ function bindEvents() {
   });
   elements.holdToggle.addEventListener("click", () => {
     setHoldMode(!appState.holdMode);
+  });
+  elements.blockDescriptionsToggle.addEventListener("change", (event) => {
+    setBlockDescriptions(event.target.checked);
   });
   elements.introStartButton.addEventListener("click", () => {
     hideIntro();
@@ -1027,13 +1136,17 @@ function init() {
   updateTimerDisplay();
   renderTiles();
   showIntro();
+  setBlockDescriptions(appState.showBlockDescriptions);
   applyRealTransactions();
 }
 
 function applyRealTransactions() {
-  fetchRealTransactions().then((realTxs) => {
-    if (!realTxs.length) return;
-    appState.tiles = mapRealTxsToTiles(realTxs, appState.tiles, appState.rng);
+  fetchRealTransactions().then((result) => {
+    if (!result || !result.txs.length) return;
+    appState.seed = result.blockNumber;
+    const { tiles, rng } = generateTiles(appState.seed);
+    appState.tiles = mapRealTxsToTiles(result.txs, tiles, rng);
+    appState.rng = rng;
     renderTiles();
   });
 }
