@@ -463,36 +463,67 @@ body {
 }
 
 .leaderboard-table {
-  display: grid;
-  gap: 6px;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 11px;
   color: #1b1b1b;
+  background: #f7faff;
+  border: 1px solid #9fb2d4;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.leaderboard-body {
-  display: grid;
-  gap: 4px;
-}
-
-.leaderboard-row {
-  display: grid;
-  grid-template-columns: 44px 1.2fr 72px 80px 90px;
-  gap: 8px;
-  align-items: center;
-}
-
-.leaderboard-row.header {
+.leaderboard-table thead th {
+  text-align: left;
   font-weight: bold;
   color: #1b2c4f;
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.3px;
+  background: #e9f1ff;
+  border-bottom: 2px solid #b7c8e6;
+  padding: 6px 8px;
 }
 
-.leaderboard-row span {
+.leaderboard-table thead th + th {
+  border-left: 1px solid #b7c8e6;
+}
+
+.leaderboard-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #d6e0f2;
+  background: #f9fbff;
+}
+
+.leaderboard-table tbody tr td + td {
+  border-left: 1px solid #e0e8f6;
+}
+
+.leaderboard-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.leaderboard-table tbody tr:hover td {
+  background: #eef4ff;
+}
+
+.leaderboard-table td,
+.leaderboard-table th {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.leaderboard-rank {
+  text-align: left;
+  width: 56px;
+}
+
+.leaderboard-num {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  width: 96px;
 }
 
 .leaderboard-entry {
@@ -546,6 +577,13 @@ body {
   transform: translateY(-2%);
   position: relative;
   border-radius: 6px;
+}
+
+.leaderboard-modal .modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
 }
 
 .panel-title {
@@ -884,14 +922,19 @@ body {
   right: 10px;
   width: 26px;
   height: 26px;
-  border: 1px solid #9b3a3a;
-  background: linear-gradient(180deg, #ffb1b1 0%, #e45c5c 100%);
-  color: #4a0d0d;
+  border: 1px solid #0f2e75;
+  background: linear-gradient(180deg, #f8fbff 0%, #d6e6ff 55%, #b7cdf6 100%);
+  color: #0f2e75;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
   border-radius: 3px;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.modal-close:active {
+  background: linear-gradient(180deg, #a9c5f1 0%, #d6e6ff 100%);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) inset;
 }
 
 .tutorial-visual {

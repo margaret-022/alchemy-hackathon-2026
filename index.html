@@ -289,16 +289,18 @@
           <button class="modal-close" id="leaderboard-close-button">✕</button>
           <div class="intro-title">Leaderboard</div>
           <div class="intro-body">
-            <div class="leaderboard-table" role="table" aria-label="Leaderboard">
-              <div class="leaderboard-row header" role="row">
-                <span role="columnheader">Rank</span>
-                <span role="columnheader">Player</span>
-                <span role="columnheader">Time</span>
-                <span role="columnheader">Approvals</span>
-                <span role="columnheader">Max Pressure</span>
-              </div>
-              <div id="leaderboard-list" class="leaderboard-body" role="rowgroup"></div>
-            </div>
+            <table class="leaderboard-table" aria-label="Leaderboard">
+              <thead>
+                <tr>
+                  <th scope="col">Rank</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Time</th>
+                  <th scope="col">Approvals</th>
+                  <th scope="col">Max Pressure</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-list"></tbody>
+            </table>
             <div class="status-subtext" id="leaderboard-empty">
               Loading top runs...
             </div>

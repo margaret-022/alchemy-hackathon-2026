@@ -854,13 +854,13 @@ function formatLeaderboardEntry(entry, index) {
   const pressure = Math.round((entry.max_pressure_ratio || 0) * 100);
   const approvals = entry.approvals || 0;
   return `
-    <div class="leaderboard-row" role="row">
-      <span role="cell">#${index + 1}</span>
-      <span role="cell">${name}</span>
-      <span role="cell">${time}</span>
-      <span role="cell">${approvals}/${APPROVAL_TARGET}</span>
-      <span role="cell">${pressure}%</span>
-    </div>
+    <tr>
+      <td class="leaderboard-rank">#${index + 1}</td>
+      <td>${name}</td>
+      <td class="leaderboard-num">${time}</td>
+      <td class="leaderboard-num">${approvals}/${APPROVAL_TARGET}</td>
+      <td class="leaderboard-num">${pressure}%</td>
+    </tr>
   `;
 }
 
@@ -878,9 +878,52 @@ function renderLeaderboard(entries) {
     .join("");
 }
 
+function getMockLeaderboard() {
+  return [
+    {
+      display_name: "Margaret",
+      time_seconds: 69,
+      max_pressure_ratio: 0.57,
+      approvals: 25,
+    },
+    {
+      display_name: "Ava",
+      time_seconds: 74,
+      max_pressure_ratio: 0.62,
+      approvals: 25,
+    },
+    {
+      display_name: "Noah",
+      time_seconds: 79,
+      max_pressure_ratio: 0.48,
+      approvals: 25,
+    },
+    {
+      display_name: "Priya",
+      time_seconds: 83,
+      max_pressure_ratio: 0.71,
+      approvals: 25,
+    },
+    {
+      display_name: "Kai",
+      time_seconds: 88,
+      max_pressure_ratio: 0.66,
+      approvals: 25,
+    },
+  ];
+}
+
+function shouldUseMockLeaderboard() {
+  return window.location.search.includes("mockLeaderboard=1");
+}
+
 async function fetchLeaderboard(options = {}) {
   const { bustCache = false } = options;
   try {
+    if (shouldUseMockLeaderboard()) {
+      renderLeaderboard(getMockLeaderboard());
+      return;
+    }
     const cacheBuster = bustCache ? `&t=${Date.now()}` : "";
     const res = await fetch(
       `${LEADERBOARD_ENDPOINT}?limit=${LEADERBOARD_LIMIT}${cacheBuster}`,
