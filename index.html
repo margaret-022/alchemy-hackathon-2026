@@ -22,6 +22,9 @@
           </div>
           <div class="titlebar-right">
             <button class="titlebar-button help-button" id="help-button">?</button>
+            <button class="titlebar-button" id="leaderboard-toggle">
+              Leaderboard
+            </button>
             <button class="titlebar-button" id="music-toggle">Music: On</button>
             <button class="titlebar-button" id="how-to-win-button">
               How to Win
@@ -176,6 +179,25 @@
             bounds. The mempool sings, the validators nod, and your RPC budget is
             perfectly paced.
           </div>
+          <div class="leaderboard-entry">
+            <div class="panel-title">Submit your run</div>
+            <div class="leaderboard-row">
+              <input
+                type="text"
+                id="leaderboard-name"
+                class="leaderboard-input"
+                placeholder="Display name"
+                maxlength="20"
+                autocomplete="nickname"
+              />
+              <button class="restart-button" id="leaderboard-submit">
+                Submit score
+              </button>
+            </div>
+            <div class="status-subtext" id="leaderboard-status">
+              Add your name to the global leaderboard.
+            </div>
+          </div>
           <div class="modal-actions center">
             <button class="restart-button" id="victory-restart-button">
               New Game
@@ -258,6 +280,19 @@
               Each tile is a request with a hidden pattern. Approving reveals
               how choices stack into incidents.
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="leaderboard-overlay hidden" id="leaderboard-overlay">
+        <div class="leaderboard-modal">
+          <button class="modal-close" id="leaderboard-close-button">✕</button>
+          <div class="intro-title">Leaderboard</div>
+          <div class="intro-body">
+            <ol class="leaderboard-list" id="leaderboard-list"></ol>
+            <div class="status-subtext" id="leaderboard-empty">
+              Loading top runs...
+            </div>
           </div>
         </div>
       </div>

@@ -462,6 +462,75 @@ body {
   gap: 12px;
 }
 
+.leaderboard-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: #1b1b1b;
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.leaderboard-entry {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.leaderboard-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.leaderboard-input {
+  padding: 8px 10px;
+  border: 1px solid #2c3f63;
+  border-radius: 3px;
+  font-size: 11px;
+  min-width: 180px;
+}
+
+.leaderboard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  width: 100vw;
+  height: 100vh;
+}
+
+.leaderboard-overlay.hidden {
+  display: none;
+}
+
+.leaderboard-modal {
+  width: 520px;
+  max-width: 90vw;
+  background: linear-gradient(180deg, #ffffff 0%, #edf2ff 100%);
+  border: 2px solid var(--xp-border-dark);
+  padding: 20px;
+  box-shadow: 0 0 0 1px #ffffff inset, 8px 8px 0 rgba(0, 0, 0, 0.4);
+  justify-self: center;
+  align-self: center;
+  transform: translateY(-2%);
+  position: relative;
+  border-radius: 6px;
+}
+
 .panel-title {
   font-size: 11px;
   font-weight: bold;

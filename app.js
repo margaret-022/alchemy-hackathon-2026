@@ -8,6 +8,10 @@ const BURST_WINDOW_MS = 2000;
 const BURST_MAX_MULTIPLIER = 2.8;
 const ALCHEMY_NETWORK = "eth-sepolia";
 const ALCHEMY_KEY_STORAGE = "alchemyKey";
+const LEADERBOARD_STORAGE_KEY = "tpLeaderboardName";
+const LEADERBOARD_LIMIT = 10;
+const LEADERBOARD_ENDPOINT = "/api/leaderboard";
+const LEADERBOARD_SUBMIT_ENDPOINT = "/api/submit-score";
 const EGG_PATH = {
   xMax: 180,
   yMax: 140,
@@ -103,6 +107,7 @@ const appState = {
   showBlockDescriptions: false,
   tutorialStepIndex: 0,
   maxPressureRatio: 0,
+  leaderboardVisible: false,
 };
 
 const elements = {
@@ -147,6 +152,14 @@ const elements = {
   tutorialCloseButton: document.getElementById("tutorial-close-button"),
   blockDescriptionsToggle: document.getElementById("block-descriptions-toggle"),
   musicToggle: document.getElementById("music-toggle"),
+  leaderboardToggle: document.getElementById("leaderboard-toggle"),
+  leaderboardOverlay: document.getElementById("leaderboard-overlay"),
+  leaderboardCloseButton: document.getElementById("leaderboard-close-button"),
+  leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardEmpty: document.getElementById("leaderboard-empty"),
+  leaderboardName: document.getElementById("leaderboard-name"),
+  leaderboardSubmit: document.getElementById("leaderboard-submit"),
+  leaderboardStatus: document.getElementById("leaderboard-status"),
 };
 
 let tooltipEl = null;
@@ -715,6 +728,7 @@ function triggerVictory() {
   stopTimer();
   stopMusic();
   elements.victoryOverlay.classList.remove("hidden");
+  fetchLeaderboard();
 }
 
 
@@ -809,6 +823,110 @@ function renderSignals() {
   });
 
   elements.signalsContent.appendChild(list);
+}
+
+function setLeaderboardVisible(isVisible) {
+  appState.leaderboardVisible = isVisible;
+  if (!elements.leaderboardOverlay) return;
+  elements.leaderboardOverlay.classList.toggle("hidden", !isVisible);
+  if (elements.leaderboardToggle) {
+    elements.leaderboardToggle.classList.toggle("is-active", isVisible);
+  }
+  if (isVisible) {
+    pauseTimer();
+    fetchLeaderboard();
+  } else {
+    resumeTimer();
+  }
+}
+
+function getStoredLeaderboardName() {
+  return localStorage.getItem(LEADERBOARD_STORAGE_KEY) || "";
+}
+
+function setStoredLeaderboardName(name) {
+  localStorage.setItem(LEADERBOARD_STORAGE_KEY, name);
+}
+
+function formatLeaderboardEntry(entry, index) {
+  const name = entry.display_name || "Anonymous";
+  const time = formatTime(entry.time_seconds || 0);
+  const pressure = Math.round((entry.max_pressure_ratio || 0) * 100);
+  const approvals = entry.approvals || 0;
+  return `
+    <li class="leaderboard-item">
+      <span>#${index + 1} ${name}</span>
+      <span>${time} • ${approvals}/${APPROVAL_TARGET} • ${pressure}%</span>
+    </li>
+  `;
+}
+
+function renderLeaderboard(entries) {
+  if (!elements.leaderboardList || !elements.leaderboardEmpty) return;
+  elements.leaderboardList.innerHTML = "";
+  if (!entries.length) {
+    elements.leaderboardEmpty.textContent = "No completed runs yet.";
+    elements.leaderboardEmpty.style.display = "block";
+    return;
+  }
+  elements.leaderboardEmpty.style.display = "none";
+  elements.leaderboardList.innerHTML = entries
+    .map((entry, index) => formatLeaderboardEntry(entry, index))
+    .join("");
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(`${LEADERBOARD_ENDPOINT}?limit=${LEADERBOARD_LIMIT}`);
+    if (!res.ok) throw new Error("Failed to fetch leaderboard");
+    const data = await res.json();
+    renderLeaderboard(Array.isArray(data) ? data : []);
+  } catch (error) {
+    if (elements.leaderboardEmpty) {
+      elements.leaderboardEmpty.textContent = "Leaderboard offline.";
+      elements.leaderboardEmpty.style.display = "block";
+    }
+  }
+}
+
+function setLeaderboardStatus(message, isError = false) {
+  if (!elements.leaderboardStatus) return;
+  elements.leaderboardStatus.textContent = message;
+  elements.leaderboardStatus.style.color = isError ? "#8c2b2b" : "#333";
+}
+
+async function submitLeaderboardEntry() {
+  if (!elements.leaderboardName || !elements.leaderboardSubmit) return;
+  const rawName = elements.leaderboardName.value.trim();
+  if (!rawName) {
+    setLeaderboardStatus("Add a name to submit your run.", true);
+    return;
+  }
+  const payload = {
+    displayName: rawName,
+    approvals: appState.approvalCount,
+    timeSeconds: appState.elapsedSeconds,
+    maxPressureRatio: appState.maxPressureRatio,
+    timeLimitSeconds: appState.timeLimitSeconds,
+  };
+  elements.leaderboardSubmit.disabled = true;
+  setLeaderboardStatus("Submitting run...");
+  try {
+    const res = await fetch(LEADERBOARD_SUBMIT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Submission failed");
+    setStoredLeaderboardName(rawName);
+    setLeaderboardStatus("Run submitted. Refreshing leaderboard...");
+    await fetchLeaderboard();
+    setLeaderboardStatus("Run submitted. See you on the board.");
+  } catch (error) {
+    setLeaderboardStatus("Could not submit run. Try again.", true);
+  } finally {
+    elements.leaderboardSubmit.disabled = false;
+  }
 }
 
 function renderMeters() {
@@ -1142,6 +1260,7 @@ function resetGame(newSeed) {
   updateTimerDisplay();
   renderTiles();
   applyRealTransactions();
+  fetchLeaderboard();
 }
 
 function bindEvents() {
@@ -1174,6 +1293,30 @@ function bindEvents() {
     hideIntro();
     startTimer();
   });
+  if (elements.leaderboardName) {
+    elements.leaderboardName.value = getStoredLeaderboardName();
+  }
+  if (elements.leaderboardSubmit) {
+    elements.leaderboardSubmit.addEventListener("click", () => {
+      submitLeaderboardEntry();
+    });
+  }
+  if (elements.leaderboardToggle) {
+    elements.leaderboardToggle.addEventListener("click", () => {
+      requestMusicPlayback();
+      setLeaderboardVisible(!appState.leaderboardVisible);
+    });
+  }
+  if (elements.leaderboardCloseButton) {
+    elements.leaderboardCloseButton.addEventListener("click", () => {
+      setLeaderboardVisible(false);
+    });
+  }
+  if (elements.leaderboardOverlay) {
+    elements.leaderboardOverlay.addEventListener("click", (event) => {
+      handleOverlayClick(event, () => setLeaderboardVisible(false));
+    });
+  }
   elements.helpButton.addEventListener("click", () => {
     requestMusicPlayback();
     pauseTimer();
@@ -1250,6 +1393,7 @@ function init() {
   showIntro();
   setBlockDescriptions(appState.showBlockDescriptions);
   applyRealTransactions();
+  fetchLeaderboard();
 }
 
 function applyRealTransactions() {
