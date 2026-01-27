@@ -875,9 +875,16 @@ function renderLeaderboard(entries) {
     .join("");
 }
 
-async function fetchLeaderboard() {
+async function fetchLeaderboard(options = {}) {
+  const { bustCache = false } = options;
   try {
-    const res = await fetch(`${LEADERBOARD_ENDPOINT}?limit=${LEADERBOARD_LIMIT}`);
+    const cacheBuster = bustCache ? `&t=${Date.now()}` : "";
+    const res = await fetch(
+      `${LEADERBOARD_ENDPOINT}?limit=${LEADERBOARD_LIMIT}${cacheBuster}`,
+      {
+        cache: bustCache ? "no-store" : "default",
+      }
+    );
     if (!res.ok) throw new Error("Failed to fetch leaderboard");
     const data = await res.json();
     renderLeaderboard(Array.isArray(data) ? data : []);
@@ -920,7 +927,7 @@ async function submitLeaderboardEntry() {
     if (!res.ok) throw new Error("Submission failed");
     setStoredLeaderboardName(rawName);
     setLeaderboardStatus("Run submitted. Refreshing leaderboard...");
-    await fetchLeaderboard();
+    await fetchLeaderboard({ bustCache: true });
     setLeaderboardStatus("Run submitted. See you on the board.");
   } catch (error) {
     setLeaderboardStatus("Could not submit run. Try again.", true);

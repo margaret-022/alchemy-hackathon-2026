@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
     }
 
     const data = await response.json();
-    res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
+    res.setHeader("Cache-Control", "s-maxage=5, stale-while-revalidate=15");
     return jsonResponse(res, 200, data);
   } catch (error) {
     return jsonResponse(res, 502, { error: "Leaderboard fetch failed." });
