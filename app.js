@@ -8,6 +8,7 @@ const BURST_WINDOW_MS = 2000;
 const BURST_MAX_MULTIPLIER = 2.8;
 const ALCHEMY_NETWORK = "eth-sepolia";
 const ALCHEMY_KEY_STORAGE = "alchemyKey";
+const DEFAULT_ALCHEMY_KEY = "oQzRJ5FZsDPPgwmCAoomN";
 const LEADERBOARD_STORAGE_KEY = "tpLeaderboardName";
 const LEADERBOARD_LIMIT = 10;
 const LEADERBOARD_ENDPOINT = "/api/leaderboard";
@@ -419,7 +420,7 @@ function generateTiles(seed) {
 }
 
 function getAlchemyKey() {
-  return localStorage.getItem(ALCHEMY_KEY_STORAGE);
+  return localStorage.getItem(ALCHEMY_KEY_STORAGE) || DEFAULT_ALCHEMY_KEY;
 }
 
 function getAlchemyUrl(apiKey) {
