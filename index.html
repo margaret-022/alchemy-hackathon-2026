@@ -16,11 +16,18 @@
           </div>
           <div class="titlebar-right">
             <button class="titlebar-button help-button" id="help-button">?</button>
-            <button class="titlebar-button" id="quick-incident">
+            <button class="titlebar-button" id="how-to-win-button">
+              How to Win
+            </button>
+            <button class="titlebar-button" id="tutorial-button">Tutorial</button>
+            <button class="titlebar-button debug-only" id="quick-victory">
+              Show Victory
+            </button>
+            <button class="titlebar-button debug-only" id="quick-incident">
               Show Incident
             </button>
             <button class="titlebar-button" id="quick-restart">
-              New Run
+              New Game
             </button>
           </div>
         </div>
@@ -28,18 +35,11 @@
         <div class="content">
           <div class="grid" id="grid"></div>
           <div class="side-panel">
-            <div class="panel-section signals-panel">
-              <div class="panel-title">Time</div>
-              <div class="time-row">
-                <div class="status-label" id="timer-display">00:00</div>
-                <div class="status-subtext" id="timer-limit">Limit: 10:00</div>
-              </div>
-            </div>
             <div class="panel-section">
-              <div class="panel-title">Global Status</div>
-              <div class="status-label" id="status-label">Stable</div>
-              <div class="status-subtext" id="status-subtext">
-                No approvals yet.
+              <div class="panel-title">Approvals</div>
+              <div class="status-label" id="approval-count">0</div>
+              <div class="status-subtext">
+                Goal: approve 25 without an incident.
               </div>
             </div>
 
@@ -71,13 +71,14 @@
               </div>
             </div>
 
-            <div class="panel-section">
-              <div class="panel-title">Approvals</div>
-              <div class="status-label" id="approval-count">0</div>
-              <div class="status-subtext">
-                Goal: approve 25 without an incident.
+            <div class="panel-section signals-panel">
+              <div class="panel-title">Time</div>
+              <div class="time-row">
+                <div class="status-label" id="timer-display">00:00</div>
+                <div class="status-subtext" id="timer-limit">Limit: 10:00</div>
               </div>
             </div>
+
             <div class="panel-section signals-panel">
               <div class="panel-title">Clues</div>
               <div class="signals-content" id="signals-content">
@@ -85,6 +86,10 @@
                   >Choose a tile to see a pace or sameness clue.</span
                 >
               </div>
+            </div>
+
+            <div class="panel-section signals-panel">
+              <div class="panel-title">Hold Mode</div>
               <div class="signals-actions">
                 <button class="mode-button" id="hold-toggle">
                   Hold Mode: Off
@@ -107,10 +112,62 @@
           <div class="incident-hint" id="incident-hint"></div>
           <div class="incident-impact" id="incident-impact"></div>
           <div class="incident-recommendation" id="incident-recommendation"></div>
+          <pre class="incident-trophy" aria-hidden="true">     _______________
+    |@@@@|     |####|
+    |@@@@|     |####|
+    |@@@@|     |####|
+    \@@@@|     |####/
+     \@@@|     |###/
+      `@@|_____|##'
+           (O)
+        .-'''''-.
+      .'  * * *  `.
+     :  *       *  :
+    : ~ L O S E R ~ :
+    : ~ A W A R D ~ :
+     :  *       *  :
+      `.  * * *  .'
+        `-.....-'
+</pre>
           <div class="incident-list" id="incident-list"></div>
-          <button class="restart-button" id="restart-button">New Run</button>
+          <div class="modal-actions center">
+            <button class="restart-button" id="restart-button">New Game</button>
+          </div>
         </div>
       </div>
+
+      <div class="victory-overlay hidden" id="victory-overlay">
+        <div class="victory-modal">
+          <div class="incident-title">On-Chain Legend Unlocked</div>
+          <div class="victory-subtitle">
+            No 429s. No hotspots. Pure flow.
+          </div>
+          <pre class="victory-trophy" aria-hidden="true">       _________
+      '.       .'
+       _\:.   /_
+      //|::   |\\
+      \\|::   |//
+       `\::.  /`
+         `\ /`
+           T
+        __/ \__
+       |       |
+      _|SUCCESS|_
+     |  ~~~~~~~  |
+  ^^^^^^^^^^^^^^^^^^^</pre>
+          <div class="victory-body">
+            You hit the approval target while keeping Volume and Concentration in
+            bounds. The mempool sings, the validators nod, and your RPC budget is
+            perfectly paced.
+          </div>
+          <div class="modal-actions center">
+            <button class="restart-button" id="victory-restart-button">
+              New Game
+            </button>
+          </div>
+        </div>
+      </div>
+
 
       <div class="intro-overlay hidden" id="intro-overlay">
         <div class="intro-modal">
@@ -132,7 +189,7 @@
           </div>
           <div class="intro-actions">
             <button class="restart-button" id="intro-start-button">
-              Begin Run
+              Begin Game
             </button>
           </div>
         </div>
@@ -140,17 +197,13 @@
 
       <div class="help-overlay hidden" id="help-overlay">
         <div class="help-modal">
+          <button class="modal-close" id="help-close-button">✕</button>
           <div class="intro-title">How to Read the Panel</div>
           <div class="intro-body">
             <h4>Time</h4>
             <p>
               This is the round clock. You are trying to reach the approval goal
               before the limit expires.
-            </p>
-            <h4>Global Status</h4>
-            <p>
-              The system’s overall heat based on the higher of Volume or Hotspot.
-              It updates as your approvals add pressure.
             </p>
             <h4>Request Volume</h4>
             <p>
@@ -172,13 +225,70 @@
               What the system is “telling” you. Signals reveal severity and
               related approvals after each choice.
             </p>
+            <h4>Clues</h4>
+            <p>
+              Clues explain the pressure you just added. They call out pacing
+              (burst approvals) or sameness (repeat method or cluster) so you can
+              adjust the next few choices.
+            </p>
+            <h4>Hold Mode</h4>
+            <p>
+              Use Hold Mode to inspect a tile without adding pressure. It marks
+              the tile for later and keeps meters steady while you compare
+              patterns.
+            </p>
             <h4>The Grid</h4>
             <p>
               Each tile is a request with a hidden pattern. Approving reveals
               how choices stack into incidents.
             </p>
           </div>
-          <button class="restart-button" id="help-close-button">Close</button>
+        </div>
+      </div>
+
+      <div class="how-to-win-overlay hidden" id="how-to-win-overlay">
+        <div class="how-to-win-modal">
+          <button class="modal-close" id="how-to-win-close-button">✕</button>
+          <div class="intro-title">How to Win</div>
+          <div class="intro-body">
+            <p>
+              Approve 25 tiles before time runs out while keeping both pressure
+              meters below their thresholds. No tile is bad on its own; patterns
+              are what cause incidents.
+            </p>
+            <h4>Patterns to Watch</h4>
+            <p>
+              <strong>Sameness (Hotspot):</strong> repeating the same request
+              method or cluster builds concentration pressure.
+            </p>
+            <p>
+              <strong>Burst (Volume):</strong> approving too quickly multiplies
+              throughput pressure even if requests are diverse.
+            </p>
+            <p>
+              <strong>Mixed:</strong> sameness plus burst spikes both meters
+              fastest.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tutorial-overlay hidden" id="tutorial-overlay">
+        <div class="tutorial-modal">
+          <button class="modal-close" id="tutorial-close-button">✕</button>
+          <div class="intro-title" id="tutorial-title">Tutorial</div>
+          <div class="intro-body" id="tutorial-body"></div>
+          <div class="tutorial-footer">
+            <div class="tutorial-step" id="tutorial-step"></div>
+            <div class="tutorial-actions">
+              <button class="restart-button" id="tutorial-prev-button">
+                Back
+              </button>
+              <button class="restart-button" id="tutorial-next-button">
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -42,6 +42,27 @@ An incident triggers when either pressure crosses its threshold:
 - **Hotspot incident:** approvals were too similar.
 - **Timeout:** the round ends when the clock hits zero.
 
+## How to Win (Patterns to Watch)
+You win by reaching 25 approvals while keeping both meters below their thresholds.
+The game is about managing patterns, not avoiding single bad tiles.
+
+### The Three Patterns
+- **Sameness (Hotspot):** repeating the same method (READ/LOGS/TRACE/SEND/BLOCK)
+  or cluster letter (A–E) builds concentration pressure.
+- **Burst (Volume):** approving too quickly multiplies throughput pressure even if
+  the tiles are diverse.
+- **Mixed:** sameness plus burst spikes both meters fastest.
+
+### Practical Playbook
+- **Alternate methods and clusters** after each approval to break hotspots.
+- **Slow your cadence** when the Volume meter climbs; waiting lets meters decay.
+- **Use Hold Mode** to compare tiles without adding pressure.
+
+### What to Look For on the Grid
+- Each tile shows `METHOD • CLUSTER`.
+- Related tiles glow after approval to show sameness pressure.
+- Clues call out repetition or burst timing for your last few approvals.
+
 ### Interface Map
 - **Grid:** each tile is a request with a hidden pattern.
 - **Clues panel:** local hints about repetition or bursts.
@@ -84,3 +105,6 @@ Guardrails (from PRD):
 - `index.html` — UI layout
 - `styles.css` — visual design and layout
 - `app.js` — game logic and state
+
+## Attribution
+- Victory trophy ASCII art by Joan Stark (jgs): https://asciiart.website/art/5899

@@ -75,6 +75,7 @@ const appState = {
   lastApprovalMs: 0,
   isPaused: false,
   holdMode: false,
+  tutorialStepIndex: 0,
 };
 
 const elements = {
@@ -95,6 +96,9 @@ const elements = {
   incidentRecommendation: document.getElementById("incident-recommendation"),
   incidentList: document.getElementById("incident-list"),
   restartButton: document.getElementById("restart-button"),
+  victoryOverlay: document.getElementById("victory-overlay"),
+  victoryRestartButton: document.getElementById("victory-restart-button"),
+  quickVictory: document.getElementById("quick-victory"),
   quickRestart: document.getElementById("quick-restart"),
   quickIncident: document.getElementById("quick-incident"),
   holdToggle: document.getElementById("hold-toggle"),
@@ -103,7 +107,111 @@ const elements = {
   helpOverlay: document.getElementById("help-overlay"),
   helpButton: document.getElementById("help-button"),
   helpCloseButton: document.getElementById("help-close-button"),
+  howToWinOverlay: document.getElementById("how-to-win-overlay"),
+  howToWinButton: document.getElementById("how-to-win-button"),
+  howToWinCloseButton: document.getElementById("how-to-win-close-button"),
+  tutorialOverlay: document.getElementById("tutorial-overlay"),
+  tutorialButton: document.getElementById("tutorial-button"),
+  tutorialTitle: document.getElementById("tutorial-title"),
+  tutorialBody: document.getElementById("tutorial-body"),
+  tutorialStep: document.getElementById("tutorial-step"),
+  tutorialPrevButton: document.getElementById("tutorial-prev-button"),
+  tutorialNextButton: document.getElementById("tutorial-next-button"),
+  tutorialCloseButton: document.getElementById("tutorial-close-button"),
 };
+
+const TUTORIAL_STEPS = [
+  {
+    title: "Step 1 — Read the Tile",
+    body:
+      "Each tile shows METHOD • CLUSTER. No tile is bad alone. Patterns are what cause incidents.",
+    visual: `<div class="tutorial-visual">
+      <div class="mini-grid">
+        <div class="mini-tile highlight">READ&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile">LOGS&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile">SEND&nbsp;&bull;&nbsp;D</div>
+        <div class="mini-tile">TRACE&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile dim">READ&nbsp;&bull;&nbsp;C</div>
+        <div class="mini-tile dim">LOGS&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile dim">BLOCK&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile dim">SEND&nbsp;&bull;&nbsp;C</div>
+      </div>
+      <div class="mini-caption">Look at the method + cluster label first.</div>
+    </div>`,
+  },
+  {
+    title: "Step 2 — Approve vs Hold",
+    body:
+      "Approve adds pressure. Hold Mode lets you mark a tile without adding pressure so you can compare patterns.",
+    visual: `<div class="tutorial-visual">
+      <div class="mini-grid">
+        <div class="mini-tile approved">READ&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile highlight">HELD</div>
+        <div class="mini-tile">LOGS&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile">SEND&nbsp;&bull;&nbsp;C</div>
+        <div class="mini-tile dim">TRACE&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile dim">BLOCK&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile dim">READ&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile dim">LOGS&nbsp;&bull;&nbsp;D</div>
+      </div>
+      <div class="mini-caption">Hold marks a tile without pushing the meters.</div>
+    </div>`,
+  },
+  {
+    title: "Step 3 — Watch the Clues",
+    body:
+      "Clues summarize your last approvals. They call out sameness or bursts so you can adjust the next few picks.",
+    visual: `<div class="tutorial-visual">
+      <div class="mini-grid">
+        <div class="mini-tile risk">READ&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile risk">READ&nbsp;&bull;&nbsp;D</div>
+        <div class="mini-tile">LOGS&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile">SEND&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile risk">TRACE&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile dim">BLOCK&nbsp;&bull;&nbsp;C</div>
+        <div class="mini-tile dim">LOGS&nbsp;&bull;&nbsp;D</div>
+        <div class="mini-tile dim">SEND&nbsp;&bull;&nbsp;A</div>
+      </div>
+      <div class="mini-caption">Repeats (same method or cluster) drive hotspot clues.</div>
+    </div>`,
+  },
+  {
+    title: "Step 4 — Manage the Meters",
+    body:
+      "Volume rises with fast approvals. Hotspot rises with repeating method or cluster. Waiting lets meters decay.",
+    visual: `<div class="tutorial-visual">
+      <div class="mini-grid">
+        <div class="mini-tile approved">READ&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile approved">LOGS&nbsp;&bull;&nbsp;C</div>
+        <div class="mini-tile approved">SEND&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile">TRACE&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile dim">READ&nbsp;&bull;&nbsp;D</div>
+        <div class="mini-tile dim">LOGS&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile dim">BLOCK&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile dim">SEND&nbsp;&bull;&nbsp;C</div>
+      </div>
+      <div class="mini-caption">Burst approvals (back-to-back) spike volume.</div>
+    </div>`,
+  },
+  {
+    title: "Step 5 — Win the Game",
+    body:
+      "Reach 25 approvals before the time limit without crossing either meter threshold. Pace plus variety wins.",
+    visual: `<div class="tutorial-visual">
+      <div class="mini-grid">
+        <div class="mini-tile approved">READ&nbsp;&bull;&nbsp;B</div>
+        <div class="mini-tile">LOGS&nbsp;&bull;&nbsp;C</div>
+        <div class="mini-tile approved">SEND&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile">TRACE&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile approved">BLOCK&nbsp;&bull;&nbsp;D</div>
+        <div class="mini-tile">READ&nbsp;&bull;&nbsp;E</div>
+        <div class="mini-tile approved">LOGS&nbsp;&bull;&nbsp;A</div>
+        <div class="mini-tile">SEND&nbsp;&bull;&nbsp;B</div>
+      </div>
+      <div class="mini-caption">A mixed pattern keeps both meters steady.</div>
+    </div>`,
+  },
+];
 
 function createSeededRng(seed) {
   function xmur3(str) {
@@ -412,6 +520,19 @@ function checkForIncident() {
   }
 }
 
+function checkForVictory() {
+  if (appState.incident) return false;
+  if (appState.approvalCount < APPROVAL_TARGET) return false;
+  triggerVictory();
+  return true;
+}
+
+function triggerVictory() {
+  stopTimer();
+  elements.victoryOverlay.classList.remove("hidden");
+}
+
+
 function scoreContribution(tile, incidentType) {
   let score = tile.volumeWeight;
   if (incidentType === "hotspot") {
@@ -482,6 +603,7 @@ function approveTile(tile) {
   appState.focusTileId = tile.id;
   updateMeters(tile);
   checkForIncident();
+  if (checkForVictory()) return;
   renderStatus();
   renderMeters();
   renderSignals();
@@ -583,6 +705,7 @@ function applyDecayTick() {
 }
 
 function renderStatus() {
+  if (!elements.statusLabel || !elements.statusSubtext) return;
   elements.statusLabel.textContent = getGlobalStatus();
   let subtext = "No approvals yet.";
   if (appState.lastAction === "inspect") {
@@ -599,7 +722,9 @@ function renderTiles() {
   appState.tiles.forEach((tile) => {
     const div = document.createElement("div");
     div.className = `tile ${tile.state}`;
-    if (focusTile && appState.relatedIds.includes(tile.id)) {
+    if (tile.state === STATE.HOLD) {
+      // Keep held tiles visually distinct even when focusing elsewhere.
+    } else if (focusTile && appState.relatedIds.includes(tile.id)) {
       const severity = computeLocalSeverity(tile, appState.approvedTiles);
       div.classList.add(`risk-${severity}`);
       if (tile.state === STATE.APPROVED) {
@@ -652,7 +777,7 @@ function renderIncident() {
     elements.incidentImpact.textContent =
       "Impact: the team had to pause approvals to avoid a runaway incident.";
     elements.incidentRecommendation.textContent =
-      "Next run: reduce streaks so you can reach the goal before the clock.";
+      "Next game: reduce streaks so you can reach the goal before the clock.";
   } else {
     elements.incidentSummary.textContent =
       "Rate limits kicked in. Requests started failing and retries piled on.";
@@ -661,8 +786,8 @@ function renderIncident() {
       "Impact: user actions stalled, error rates spiked, and on-call had to throttle or shed load to recover.";
     elements.incidentRecommendation.textContent =
       appState.incident.type === "hotspot"
-        ? "Next run: break up similar approvals to avoid a hotspot cascade."
-        : "Next run: slow your approvals to avoid a burst cascade.";
+        ? "Next game: break up similar approvals to avoid a hotspot cascade."
+        : "Next game: slow your approvals to avoid a burst cascade.";
   }
 
   elements.incidentList.innerHTML = "";
@@ -716,7 +841,7 @@ function summarizePattern(contributors) {
       : "Pattern detected: no dominant request type or cluster.";
   const recommendation =
     appState.incident?.type === "hotspot"
-      ? "Try diversifying request types or clusters on the next run."
+      ? "Try diversifying request types or clusters in the next game."
       : "Try spacing approvals so the request burst is smaller.";
   return { summary, recommendation };
 }
@@ -744,6 +869,47 @@ function hideIntro() {
   elements.introOverlay.classList.add("hidden");
 }
 
+function showHowToWin() {
+  pauseTimer();
+  elements.howToWinOverlay.classList.remove("hidden");
+}
+
+function hideHowToWin() {
+  elements.howToWinOverlay.classList.add("hidden");
+  resumeTimer();
+}
+
+function handleOverlayClick(event, onClose) {
+  if (event.target !== event.currentTarget) return;
+  onClose();
+}
+
+function updateTutorialStep() {
+  const step = TUTORIAL_STEPS[appState.tutorialStepIndex];
+  elements.tutorialTitle.textContent = step.title;
+  elements.tutorialBody.innerHTML = `<p>${step.body}</p>${step.visual || ""}`;
+  elements.tutorialStep.textContent = `Step ${
+    appState.tutorialStepIndex + 1
+  } of ${TUTORIAL_STEPS.length}`;
+  elements.tutorialPrevButton.disabled = appState.tutorialStepIndex === 0;
+  elements.tutorialNextButton.textContent =
+    appState.tutorialStepIndex === TUTORIAL_STEPS.length - 1
+      ? "Finish"
+      : "Next";
+}
+
+function showTutorial() {
+  pauseTimer();
+  appState.tutorialStepIndex = 0;
+  updateTutorialStep();
+  elements.tutorialOverlay.classList.remove("hidden");
+}
+
+function hideTutorial() {
+  elements.tutorialOverlay.classList.add("hidden");
+  resumeTimer();
+}
+
 function resetGame(newSeed) {
   appState.seed = newSeed || `${Date.now()}`;
   appState.meters = { volume: 0, hotspot: 0 };
@@ -761,6 +927,7 @@ function resetGame(newSeed) {
   appState.tiles = tiles;
   appState.rng = rng;
   elements.overlay.classList.add("hidden");
+  elements.victoryOverlay.classList.add("hidden");
   elements.signalsContent.innerHTML =
     '<span class="signal-label">Choose a tile to see a pace or sameness clue.</span>';
   renderStatus();
@@ -774,6 +941,7 @@ function resetGame(newSeed) {
 
 function bindEvents() {
   elements.restartButton.addEventListener("click", () => resetGame());
+  elements.victoryRestartButton.addEventListener("click", () => resetGame());
   elements.quickRestart.addEventListener("click", () => resetGame());
   elements.quickIncident.addEventListener("click", () => {
     hideIntro();
@@ -782,6 +950,11 @@ function bindEvents() {
       contributors: pickContributors("hotspot"),
     };
     renderIncident();
+  });
+  elements.quickVictory.addEventListener("click", () => {
+    hideIntro();
+    appState.incident = null;
+    triggerVictory();
   });
   elements.holdToggle.addEventListener("click", () => {
     setHoldMode(!appState.holdMode);
@@ -797,6 +970,51 @@ function bindEvents() {
   elements.helpCloseButton.addEventListener("click", () => {
     elements.helpOverlay.classList.add("hidden");
     resumeTimer();
+  });
+  elements.helpOverlay.addEventListener("click", (event) => {
+    handleOverlayClick(event, () => {
+      elements.helpOverlay.classList.add("hidden");
+      resumeTimer();
+    });
+  });
+  elements.howToWinButton.addEventListener("click", () => {
+    showHowToWin();
+  });
+  elements.howToWinCloseButton.addEventListener("click", () => {
+    hideHowToWin();
+  });
+  elements.howToWinOverlay.addEventListener("click", (event) => {
+    handleOverlayClick(event, hideHowToWin);
+  });
+  elements.tutorialButton.addEventListener("click", () => {
+    showTutorial();
+  });
+  elements.tutorialCloseButton.addEventListener("click", () => {
+    hideTutorial();
+  });
+  elements.tutorialOverlay.addEventListener("click", (event) => {
+    handleOverlayClick(event, hideTutorial);
+  });
+  elements.tutorialPrevButton.addEventListener("click", () => {
+    appState.tutorialStepIndex = Math.max(0, appState.tutorialStepIndex - 1);
+    updateTutorialStep();
+  });
+  elements.tutorialNextButton.addEventListener("click", () => {
+    if (appState.tutorialStepIndex >= TUTORIAL_STEPS.length - 1) {
+      hideTutorial();
+      return;
+    }
+    appState.tutorialStepIndex = Math.min(
+      TUTORIAL_STEPS.length - 1,
+      appState.tutorialStepIndex + 1
+    );
+    updateTutorialStep();
+  });
+  elements.introOverlay.addEventListener("click", (event) => {
+    handleOverlayClick(event, () => {
+      hideIntro();
+      startTimer();
+    });
   });
 }
 
