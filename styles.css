@@ -15,6 +15,13 @@
   --xp-tooltip: #ffffe1;
   --xp-green: #4caf50;
   --xp-orange: #f2a13b;
+  --egg-left: 8vw;
+  --egg-bottom: 32vh;
+  --egg-size: 180px;
+  --egg-offset-y: -220px;
+  --egg-offset-x: 0px;
+  --egg-approach-y: 0px;
+  --egg-scale: 1;
 }
 
 body {
@@ -31,11 +38,31 @@ body {
   font-size: 11px;
 }
 
+.easter-egg {
+  position: fixed;
+  bottom: var(--egg-bottom);
+  left: var(--egg-left);
+  width: var(--egg-size);
+  height: auto;
+  opacity: 0.95;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+  z-index: 1;
+  transform: translate(
+      var(--egg-offset-x),
+      calc(var(--egg-offset-y) + var(--egg-approach-y))
+    )
+    scale(var(--egg-scale));
+  transform-origin: center bottom;
+}
+
 .app {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  position: relative;
+  z-index: 2;
 }
 
 .window {

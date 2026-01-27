@@ -8,6 +8,12 @@ const BURST_WINDOW_MS = 2000;
 const BURST_MAX_MULTIPLIER = 2.8;
 const ALCHEMY_NETWORK = "eth-sepolia";
 const ALCHEMY_KEY_STORAGE = "alchemyKey";
+const EGG_PATH = {
+  xMax: 180,
+  yMax: 140,
+  scaleMax: 0.5,
+  curve: 1.3,
+};
 
 const METHOD_GROUPS = [
   "eth_call",
@@ -96,6 +102,7 @@ const appState = {
   holdMode: false,
   showBlockDescriptions: false,
   tutorialStepIndex: 0,
+  maxPressureRatio: 0,
 };
 
 const elements = {
@@ -732,9 +739,24 @@ function renderSignals() {
 function renderMeters() {
   const volumeRatio = Math.min(appState.meters.volume / VOLUME_THRESHOLD, 1);
   const hotspotRatio = Math.min(appState.meters.hotspot / HOTSPOT_THRESHOLD, 1);
+  const pressureRatio = Math.max(volumeRatio, hotspotRatio);
+  appState.maxPressureRatio = Math.max(appState.maxPressureRatio, pressureRatio);
+  const approachRatio = Math.pow(appState.maxPressureRatio, EGG_PATH.curve);
   elements.volumeMeter.style.width = `${Math.round(volumeRatio * 100)}%`;
   elements.hotspotMeter.style.width = `${Math.round(hotspotRatio * 100)}%`;
   elements.hotspotMeter.classList.add("hotspot");
+  document.documentElement.style.setProperty(
+    "--egg-offset-x",
+    `${Math.round(approachRatio * EGG_PATH.xMax)}px`
+  );
+  document.documentElement.style.setProperty(
+    "--egg-approach-y",
+    `${Math.round(approachRatio * EGG_PATH.yMax)}px`
+  );
+  document.documentElement.style.setProperty(
+    "--egg-scale",
+    (1 + approachRatio * EGG_PATH.scaleMax).toFixed(3)
+  );
   renderStatus();
   elements.approvalCount.textContent = `${appState.approvalCount}/${APPROVAL_TARGET}`;
 }
@@ -1027,6 +1049,7 @@ function resetGame(newSeed) {
   appState.relatedIds = [];
   appState.focusTileId = null;
   appState.lastApprovalMs = 0;
+  appState.maxPressureRatio = 0;
   setHoldMode(false);
   showIntro();
   const { tiles, rng } = generateTiles(appState.seed);
