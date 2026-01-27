@@ -136,6 +136,7 @@ const elements = {
   holdToggle: document.getElementById("hold-toggle"),
   introOverlay: document.getElementById("intro-overlay"),
   introStartButton: document.getElementById("intro-start-button"),
+  introTutorialButton: document.getElementById("intro-tutorial-button"),
   helpOverlay: document.getElementById("help-overlay"),
   helpButton: document.getElementById("help-button"),
   helpCloseButton: document.getElementById("help-close-button"),
@@ -1346,6 +1347,12 @@ function bindEvents() {
     hideIntro();
     startTimer();
   });
+  if (elements.introTutorialButton) {
+    elements.introTutorialButton.addEventListener("click", () => {
+      requestMusicPlayback();
+      showTutorial();
+    });
+  }
   if (elements.leaderboardName) {
     elements.leaderboardName.value = getStoredLeaderboardName();
   }
