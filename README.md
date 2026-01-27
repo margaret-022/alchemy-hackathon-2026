@@ -1,0 +1,86 @@
+# Transaction Pressure
+
+Transaction Pressure is a short-form strategy game about managing system load.
+It frames production reliability as a minesweeper-adjacent puzzle: each action
+reveals a local clue about hidden patterns, and you win by pacing and variety
+before pressure overwhelms the system.
+
+## Quick Start
+- No build step. Open `index.html` in a browser.
+- Optional: run a local server for consistent asset loading:
+  - `python3 -m http.server` then open `http://localhost:8000`.
+
+## How to Play
+Goal: approve 25 tiles before the time limit without triggering an incident.
+
+### Core Actions
+- **Approve (default):** click a tile to approve it.
+- **Hold (no pressure):** toggle **Hold Mode** and click a tile to hold it.
+  Hold is the PRD’s **Inspect** action: it reveals a clue and adds no pressure.
+
+### Clues (Minesweeper-style signals)
+Clues are short, local hints based on your **last 4 approvals**.
+They tell you whether your current choice repeats a pattern or lands in a burst.
+Use them to decide whether to approve now or hold for later.
+
+Typical clues include:
+- “Clue: Log lookup repeats (2/4).”
+- “Clue: Cluster C repeats (1/4).”
+- “Clue: approvals are landing in a burst window.”
+
+### Pressure Systems
+Approving tiles increases pressure in two ways:
+- **Request Volume (Pacing):** fast approvals raise throughput pressure.
+- **Hotspot Concentration (Sameness):** repeating the same method or cluster
+  increases repetition pressure.
+
+The global status reads the higher of these two pressures.
+
+### Incidents and Outcomes
+An incident triggers when either pressure crosses its threshold:
+- **Volume incident:** approvals came too fast.
+- **Hotspot incident:** approvals were too similar.
+- **Timeout:** the round ends when the clock hits zero.
+
+### Interface Map
+- **Grid:** each tile is a request with a hidden pattern.
+- **Clues panel:** local hints about repetition or bursts.
+- **Meters:** visualize volume and hotspot pressure.
+- **Approvals:** progress toward the goal.
+
+### Debug Shortcut
+Use the **Show Incident** button in the title bar to open the closing modal
+without playing a full round.
+
+## Intent for the Hackathon
+This project explores how **transaction pressure** feels when translated into
+a decision game. It reimagines reliability risk as a minesweeper-style puzzle:
+the player uncovers local clues and must choose between speed and variety.
+
+Design goals:
+- Make players feel **clever under pressure** through pattern recognition.
+- Keep the game an **informed guessing game**, not a deterministic solver.
+- Ensure failure is **avoidable with mastery** through pacing and variety.
+
+## PRD Alignment Notes
+- **Failures visible, causes hidden:** incidents are immediate; meters are latent.
+- **No bad tiles:** only accumulation triggers failure.
+- **Inference over avoidance:** clues are local; the player infers patterns.
+- **Minesweeper-adjacent:** clues hint at patterns, not exact safe moves.
+- **Inspect action:** implemented as **Hold Mode** (no pressure, reveals clue).
+- **Windowed UI:** fixed-size 960×720 game window; no scrolling.
+- **Deterministic, demo-safe:** seeded generation; single-incident flow.
+
+## Optional: Live Transaction Flavor
+If you have an Alchemy API key, you can map live transaction data into tiles.
+Set it in localStorage:
+`localStorage.setItem("alchemyKey", "YOUR_KEY")`
+
+Guardrails (from PRD):
+- Game runs offline-first; no RPC during gameplay.
+- Real data is flavor only; incidents and meters are synthetic.
+
+## Project Structure
+- `index.html` — UI layout
+- `styles.css` — visual design and layout
+- `app.js` — game logic and state
