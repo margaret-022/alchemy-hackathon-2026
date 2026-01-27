@@ -1104,7 +1104,7 @@ body {
 }
 
 .debug-only {
-  display: inline-flex;
+  display: none;
 }
 .modal-actions.center {
   display: flex;
