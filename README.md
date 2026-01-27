@@ -62,6 +62,8 @@ The game is about managing patterns, not avoiding single bad tiles.
 - Each tile shows `METHOD • CLUSTER`.
 - Related tiles glow after approval to show sameness pressure.
 - Clues call out repetition or burst timing for your last few approvals.
+- **Block Descriptions toggle:** enable hover tooltips to view method, cluster,
+  and selector hints per tile.
 
 ### Interface Map
 - **Grid:** each tile is a request with a hidden pattern.
@@ -100,6 +102,8 @@ Set it in localStorage:
 Guardrails (from PRD):
 - Game runs offline-first; no RPC during gameplay.
 - Real data is flavor only; incidents and meters are synthetic.
+- When available, the latest Sepolia block seeds the board, and selector hints
+  appear in the hover details.
 
 ## Project Structure
 - `index.html` — UI layout
