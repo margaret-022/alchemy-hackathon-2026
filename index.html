@@ -30,6 +30,7 @@
               How to Win
             </button>
             <button class="titlebar-button" id="tutorial-button">Tutorial</button>
+            <button class="titlebar-button" id="snake-toggle">Snake</button>
             <button class="titlebar-button debug-only" id="quick-victory">
               Show Victory
             </button>
@@ -356,6 +357,57 @@
           </div>
         </div>
       </div>
+
+      <div class="snake-overlay hidden" id="snake-overlay">
+        <div class="snake-modal">
+          <button class="modal-close" id="snake-close-button">✕</button>
+          <div class="intro-title">Classic Snake</div>
+          <div class="snake-body">
+            <div class="snake-column">
+              <div class="panel-title">Score</div>
+              <div class="snake-score" id="snake-score">0</div>
+              <div class="status-subtext">
+                Best run: <span id="snake-best">0</span>
+              </div>
+              <div class="status-subtext" id="snake-status">Press Start</div>
+              <div class="snake-actions">
+                <button class="restart-button" id="snake-start-button">
+                  Start
+                </button>
+                <button class="restart-button" id="snake-restart-button">
+                  Restart
+                </button>
+              </div>
+              <div class="snake-tip">
+                Controls: Arrow keys / WASD or the pad.
+              </div>
+            </div>
+            <div class="snake-board-wrapper">
+              <div
+                class="snake-grid"
+                id="snake-grid"
+                role="grid"
+                aria-label="Snake grid"
+              ></div>
+              <div class="snake-legend">
+                <span class="snake-chip snake-chip-head"></span>Head
+                <span class="snake-chip snake-chip-body"></span>Body
+                <span class="snake-chip snake-chip-food"></span>Food
+              </div>
+            </div>
+            <div class="snake-pad">
+              <div class="snake-pad-row">
+                <button class="snake-pad-button" data-snake-dir="up">↑</button>
+              </div>
+              <div class="snake-pad-row">
+                <button class="snake-pad-button" data-snake-dir="left">←</button>
+                <button class="snake-pad-button" data-snake-dir="down">↓</button>
+                <button class="snake-pad-button" data-snake-dir="right">→</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <audio
@@ -365,6 +417,7 @@
       loop
     ></audio>
 
+    <script src="snake-logic.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

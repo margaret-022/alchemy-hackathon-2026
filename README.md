@@ -96,7 +96,15 @@ Design goals:
 
 ## Optional: Live Transaction Flavor
 If you have an Alchemy API key, you can map live transaction data into tiles.
-Set it in localStorage:
+
+**Recommended (key stays server-side):** Add to `.env` (copy from `.env.example`):
+```
+ALCHEMY_API_KEY=your_key_here
+ALCHEMY_NETWORK=eth-sepolia
+```
+The app calls `/api/alchemy-rpc`, which forwards requests using the key from env.
+
+**Alternative:** Set the key in the browser for client-side requests:
 `localStorage.setItem("alchemyKey", "YOUR_KEY")`
 
 Guardrails (from PRD):

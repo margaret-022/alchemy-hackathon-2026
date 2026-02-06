@@ -8,7 +8,7 @@ const BURST_WINDOW_MS = 2000;
 const BURST_MAX_MULTIPLIER = 2.8;
 const ALCHEMY_NETWORK = "eth-sepolia";
 const ALCHEMY_KEY_STORAGE = "alchemyKey";
-const DEFAULT_ALCHEMY_KEY = "oQzRJ5FZsDPPgwmCAoomN";
+const ALCHEMY_PROXY_ENDPOINT = "/api/alchemy-rpc";
 const LEADERBOARD_STORAGE_KEY = "tpLeaderboardName";
 const LEADERBOARD_LIMIT = 10;
 const LEADERBOARD_ENDPOINT = "/api/leaderboard";
@@ -162,6 +162,19 @@ const elements = {
   leaderboardName: document.getElementById("leaderboard-name"),
   leaderboardSubmit: document.getElementById("leaderboard-submit"),
   leaderboardStatus: document.getElementById("leaderboard-status"),
+};
+
+const snakeElements = {
+  toggle: document.getElementById("snake-toggle"),
+  overlay: document.getElementById("snake-overlay"),
+  close: document.getElementById("snake-close-button"),
+  grid: document.getElementById("snake-grid"),
+  score: document.getElementById("snake-score"),
+  best: document.getElementById("snake-best"),
+  status: document.getElementById("snake-status"),
+  start: document.getElementById("snake-start-button"),
+  restart: document.getElementById("snake-restart-button"),
+  padButtons: document.querySelectorAll("[data-snake-dir]"),
 };
 
 let tooltipEl = null;
@@ -420,18 +433,21 @@ function generateTiles(seed) {
 }
 
 function getAlchemyKey() {
-  return localStorage.getItem(ALCHEMY_KEY_STORAGE) || DEFAULT_ALCHEMY_KEY;
+  return localStorage.getItem(ALCHEMY_KEY_STORAGE) || null;
 }
 
 function getAlchemyUrl(apiKey) {
   return `https://${ALCHEMY_NETWORK}.g.alchemy.com/v2/${apiKey}`;
 }
 
-async function fetchRealTransactions() {
-  const apiKey = getAlchemyKey();
-  if (!apiKey) return null;
+function getAlchemyRequestUrl() {
+  const key = getAlchemyKey();
+  return key ? getAlchemyUrl(key) : ALCHEMY_PROXY_ENDPOINT;
+}
 
-  const url = getAlchemyUrl(apiKey);
+async function fetchRealTransactions() {
+  const url = getAlchemyRequestUrl();
+  if (!url) return null;
   const headers = { "Content-Type": "application/json" };
 
   try {
@@ -1468,4 +1484,192 @@ function applyRealTransactions() {
   });
 }
 
+const snakeGame = {
+  state: null,
+  loopId: null,
+  tickMs: 150,
+  bestScore: 0,
+};
+
+function renderSnakeGrid() {
+  if (!snakeElements.grid || !snakeGame.state) return;
+  const { gridSize, snake, food } = snakeGame.state;
+  snakeElements.grid.style.setProperty("--snake-size", gridSize);
+  snakeElements.grid.innerHTML = "";
+  for (let y = 0; y < gridSize; y += 1) {
+    for (let x = 0; x < gridSize; x += 1) {
+      const cell = document.createElement("div");
+      cell.className = "snake-cell";
+      const isHead = snake.length && snake[0].x === x && snake[0].y === y;
+      const isBody = snake.some(
+        (segment, index) => index > 0 && segment.x === x && segment.y === y
+      );
+      const isFood = food && food.x === x && food.y === y;
+      if (isFood) cell.classList.add("food");
+      if (isBody) cell.classList.add("body");
+      if (isHead) cell.classList.add("head");
+      snakeElements.grid.appendChild(cell);
+    }
+  }
+  if (snakeElements.score) {
+    snakeElements.score.textContent = `${snakeGame.state.score}`;
+  }
+  if (snakeElements.best) {
+    snakeElements.best.textContent = `${snakeGame.bestScore}`;
+  }
+}
+
+function setSnakeStatus(text) {
+  if (snakeElements.status) {
+    snakeElements.status.textContent = text;
+  }
+}
+
+function stopSnakeLoop() {
+  if (snakeGame.loopId) {
+    clearInterval(snakeGame.loopId);
+    snakeGame.loopId = null;
+  }
+}
+
+function handleSnakeGameOver(reason) {
+  stopSnakeLoop();
+  snakeGame.bestScore = Math.max(snakeGame.bestScore, snakeGame.state.score);
+  if (snakeElements.best) {
+    snakeElements.best.textContent = `${snakeGame.bestScore}`;
+  }
+  const reasonText =
+    reason === "wall"
+      ? "Hit a wall."
+      : reason === "self"
+      ? "Ran into yourself."
+      : "Board is full!";
+  setSnakeStatus(`${reasonText} Press Restart.`);
+}
+
+function tickSnake() {
+  if (!snakeGame.state || typeof SnakeLogic === "undefined") return;
+  const result = SnakeLogic.step(snakeGame.state);
+  renderSnakeGrid();
+  if (result.status === "over") {
+    handleSnakeGameOver(result.reason);
+    return;
+  }
+  if (result.ate) {
+    setSnakeStatus("Nice catch. Keep going!");
+  }
+}
+
+function startSnakeLoop() {
+  if (!snakeGame.state || typeof SnakeLogic === "undefined") return;
+  if (snakeGame.state.status === "over") {
+    restartSnake();
+  }
+  snakeGame.state.status = "running";
+  stopSnakeLoop();
+  snakeGame.loopId = setInterval(tickSnake, snakeGame.tickMs);
+  setSnakeStatus("Running. Avoid the walls!");
+}
+
+function restartSnake(seed = Date.now()) {
+  if (typeof SnakeLogic === "undefined") return;
+  snakeGame.state = SnakeLogic.createState(seed);
+  stopSnakeLoop();
+  setSnakeStatus("Press Start");
+  renderSnakeGrid();
+}
+
+function openSnakeOverlay() {
+  if (!snakeElements.overlay) return;
+  requestMusicPlayback();
+  pauseTimer();
+  snakeElements.overlay.classList.remove("hidden");
+  setSnakeStatus("Press Start");
+  renderSnakeGrid();
+}
+
+function closeSnakeOverlay() {
+  if (!snakeElements.overlay) return;
+  snakeElements.overlay.classList.add("hidden");
+  stopSnakeLoop();
+  resumeTimer();
+}
+
+function handleSnakeKeydown(event) {
+  if (!snakeElements.overlay || snakeElements.overlay.classList.contains("hidden"))
+    return;
+  if (typeof SnakeLogic === "undefined" || !snakeGame.state) return;
+  const keyMap = {
+    ArrowUp: "up",
+    ArrowDown: "down",
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    w: "up",
+    W: "up",
+    s: "down",
+    S: "down",
+    a: "left",
+    A: "left",
+    d: "right",
+    D: "right",
+  };
+  if (keyMap[event.key]) {
+    event.preventDefault();
+    SnakeLogic.queueDirection(snakeGame.state, keyMap[event.key]);
+    if (!snakeGame.loopId) {
+      startSnakeLoop();
+    }
+  }
+  if (event.key === " " && !snakeGame.loopId) {
+    event.preventDefault();
+    startSnakeLoop();
+  }
+}
+
+function bindSnakePad() {
+  if (!snakeElements.padButtons) return;
+  snakeElements.padButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const dir = button.getAttribute("data-snake-dir");
+      SnakeLogic.queueDirection(snakeGame.state, dir);
+      if (!snakeGame.loopId) {
+        startSnakeLoop();
+      }
+    });
+  });
+}
+
+function initSnake() {
+  if (!snakeElements.grid || typeof SnakeLogic === "undefined") return;
+  snakeGame.state = SnakeLogic.createState();
+  renderSnakeGrid();
+  setSnakeStatus("Press Start");
+  if (snakeElements.toggle) {
+    snakeElements.toggle.addEventListener("click", () => {
+      openSnakeOverlay();
+    });
+  }
+  if (snakeElements.close) {
+    snakeElements.close.addEventListener("click", () => {
+      closeSnakeOverlay();
+    });
+  }
+  if (snakeElements.overlay) {
+    snakeElements.overlay.addEventListener("click", (event) => {
+      handleOverlayClick(event, closeSnakeOverlay);
+    });
+  }
+  if (snakeElements.start) {
+    snakeElements.start.addEventListener("click", () => startSnakeLoop());
+  }
+  if (snakeElements.restart) {
+    snakeElements.restart.addEventListener("click", () => {
+      restartSnake();
+    });
+  }
+  bindSnakePad();
+  window.addEventListener("keydown", handleSnakeKeydown);
+}
+
 init();
+initSnake();

@@ -1115,3 +1115,167 @@ body {
 .incident-modal .restart-button {
   width: 160px;
 }
+
+.snake-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  width: 100vw;
+  height: 100vh;
+  z-index: 12;
+}
+
+.snake-overlay.hidden {
+  display: none;
+}
+
+.snake-modal {
+  background: linear-gradient(180deg, #ffffff 0%, #edf2ff 100%);
+  border: 2px solid var(--xp-border-dark);
+  box-shadow: 0 0 0 1px #ffffff inset, 8px 8px 0 rgba(0, 0, 0, 0.35);
+  padding: 16px;
+  border-radius: 6px;
+  min-width: 640px;
+  max-width: 880px;
+  position: relative;
+}
+
+.snake-modal .modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+.snake-body {
+  display: grid;
+  grid-template-columns: 180px 1fr 140px;
+  gap: 16px;
+  align-items: center;
+}
+
+.snake-column {
+  display: grid;
+  gap: 10px;
+}
+
+.snake-score {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1f4ea8;
+}
+
+.snake-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snake-tip {
+  font-size: 11px;
+  color: #1b2c4f;
+  line-height: 1.4;
+}
+
+.snake-board-wrapper {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.snake-grid {
+  --snake-size: 15;
+  display: grid;
+  grid-template-columns: repeat(var(--snake-size), 1fr);
+  gap: 2px;
+  width: 420px;
+  height: 420px;
+  padding: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #d8e7ff 100%);
+  border: 2px inset #b1c2de;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 #ffffff inset;
+}
+
+.snake-cell {
+  background: linear-gradient(180deg, #f9fbff 0%, #dde7fb 100%);
+  border: 1px solid #b1c2de;
+  border-radius: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.snake-cell.head {
+  background: linear-gradient(180deg, #4caf50 0%, #2f7c34 100%);
+  border-color: #1f4e21;
+  box-shadow: 0 0 0 1px #bde5c0 inset;
+}
+
+.snake-cell.body {
+  background: linear-gradient(180deg, #6fba72 0%, #3f8d45 100%);
+  border-color: #1f4e21;
+}
+
+.snake-cell.food {
+  background: radial-gradient(circle at 35% 35%, #fff5d9 0%, #f2a13b 70%, #b3681d 100%);
+  border-color: #9b6a1f;
+}
+
+.snake-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 11px;
+  color: #1b2c4f;
+}
+
+.snake-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid #2a3b58;
+  margin-right: 4px;
+}
+
+.snake-chip-head {
+  background: linear-gradient(180deg, #4caf50 0%, #2f7c34 100%);
+}
+
+.snake-chip-body {
+  background: linear-gradient(180deg, #6fba72 0%, #3f8d45 100%);
+}
+
+.snake-chip-food {
+  background: radial-gradient(circle at 35% 35%, #fff5d9 0%, #f2a13b 70%, #b3681d 100%);
+}
+
+.snake-pad {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.snake-pad-row {
+  display: flex;
+  gap: 6px;
+}
+
+.snake-pad-button {
+  width: 60px;
+  height: 46px;
+  border: 1px solid #2c3f63;
+  background: linear-gradient(180deg, #ffffff 0%, #dde7fb 100%);
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 0 #ffffff inset, 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.snake-pad-button:active {
+  background: linear-gradient(180deg, #c7d7f3 0%, #ffffff 100%);
+}
